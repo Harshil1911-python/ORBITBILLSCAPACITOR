@@ -44,12 +44,7 @@ jobs:
           chmod +x android/gradlew
           ls -la android/gradlew
 
-      - name: Apply custom app icon + splash
-        run: |
-          python3 scripts/install-branding.py
-          ls -la resources/icon.png resources/splash.png
-          ls -la android/app/src/main/res/mipmap-xxxhdpi/ || true
-          ls -la android/app/src/main/res/drawable/splash.png || true
+      # Branding step removed for now (scripts/install-branding.py is missing)
 
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug
