@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b3d91">
+<title>Offline · OrbitBills</title>
+<link rel="icon" href="favicon.ico">
+<style>
+  :root{--blue:#0b3d91;--tint:#eaf1fc;--ink:#101a2b;--slate:#5b6b82;--red:#b91c1c}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100dvh;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:linear-gradient(160deg,#0b3d91 0%,#1d4ed8 45%,#0b3d91 100%);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));
+  }
+  .card{
+    width:100%;max-width:400px;background:#fff;color:var(--ink);border-radius:20px;
+    padding:28px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25);text-align:center;
+  }
+  .logo{height:44px;margin:0 auto 16px;display:block}
+  h1{font-size:22px;margin-bottom:8px}
+  p{font-size:14px;color:var(--slate);line-height:1.5;margin-bottom:18px}
+  .dot{
+    width:64px;height:64px;border-radius:50%;margin:0 auto 14px;
+    background:#fef2f2;display:flex;align-items:center;justify-content:center;
+    font-size:28px;
+  }
+  .btn{
+    display:block;width:100%;padding:14px;border:0;border-radius:12px;
+    background:var(--blue);color:#fff;font-weight:700;font-size:15px;
+    cursor:pointer;margin-bottom:10px;text-decoration:none;text-align:center;
+  }
+  .btn.ghost{background:#fff;color:var(--blue);border:1px solid #dfe7f5}
+  .hint{font-size:12px;color:var(--slate);margin-top:8px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="logo.png" alt="OrbitBills" onerror="this.style.display='none'">
+    <div class="dot">📡</div>
+    <h1>You're offline</h1>
+    <p>No internet right now. Your sales and stock stay on this device. You can still open Billing if you already signed in.</p>
+    <a class="btn" href="signin.html">Go to Sign in</a>
+    <a class="btn ghost" href="billing.html">Open Billing</a>
+    <a class="btn ghost" href="index.html">Home</a>
+    <p class="hint">When you're back online, data on this phone stays safe.</p>
+  </div>
+  <script src="orbit-native.js"></script>
+  <script>
+    // If online, bounce home
+    try {
+      if (navigator.onLine) {
+        // stay — user may have opened offline.html intentionally
+      }
+    } catch (e) {}
+  </script>
+</body>
+</html>
