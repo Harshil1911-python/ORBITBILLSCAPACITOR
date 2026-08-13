@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3d91">
+<title>OrbitBills</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b3d91;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif}
+  .wrap{text-align:center;color:#fff}
+  .mark{width:88px;height:88px;border-radius:22px;background:rgba(255,255,255,.12);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;animation:p 1.2s ease-in-out infinite}
+  .mark img{height:48px;filter:brightness(0) invert(1)}
+  @keyframes p{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  .bar{width:140px;height:4px;border-radius:4px;background:rgba(255,255,255,.2);margin:18px auto 0;overflow:hidden}
+  .bar i{display:block;height:100%;width:40%;background:#0d9f6e;border-radius:4px;animation:b 1s ease-in-out infinite}
+  @keyframes b{0%{transform:translateX(-100%)}100%{transform:translateX(280%)}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mark"><img src="logo.png" alt=""></div>
+    <div style="font-weight:700;font-size:18px">OrbitBills</div>
+    <div style="opacity:.7;font-size:13px;margin-top:4px">Starting</div>
+    <div class="bar"><i></i></div>
+  </div>
+  <script>
+    setTimeout(function(){ location.replace("index.html"); }, 600);
+  </script>
+</body>
+</html>
