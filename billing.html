@@ -94,23 +94,6 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .low-banner{background:#fee2e2;color:var(--bad);font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:8px;display:none}
 .invoice-preview-shell{overflow:auto;max-height:65vh;background:#eef2f7;padding:12px;border-radius:10px}
-.invoice-preview-shell.preview-fullscreen{max-height:min(85vh, calc(100vh - 120px))!important;padding:8px;background:#e8edf5}
-#exportModal .modal.preview-fs-modal{max-height:98vh!important;width:100%!important;max-width:960px!important}
-#exportPreview .invoice-sheet{width:min(100%,640px)!important;margin:0 auto;box-shadow:0 6px 28px rgba(15,23,42,.12)}
-/* Sale actions drawer (below client, above coupon) */
-.sale-actions-drawer{margin:8px 0 10px;border:1px solid var(--line);border-radius:12px;background:var(--tint,#f8fafc);overflow:hidden}
-.sale-actions-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:transparent;border:0;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;min-height:44px}
-.sale-actions-chev{font-size:12px;color:var(--muted);transition:transform .2s}
-.sale-actions-drawer.collapsed .sale-actions-chev{transform:rotate(-90deg)}
-.sale-actions-drawer.collapsed .sale-actions-body{display:none}
-.sale-actions-body{padding:0 10px 10px}
-.sale-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.sale-actions-grid .btn{min-height:44px;width:100%;font-weight:600}
-.sale-actions-grid #createInvoiceBtn{background:var(--brand,#0b3d91)!important;border-color:var(--brand,#0b3d91)!important;color:#fff!important}
-@media(max-width:640px){
-  .sale-actions-grid{grid-template-columns:repeat(3,1fr);gap:6px}
-  .sale-actions-grid .btn{min-height:48px;font-size:13px}
-}
 .invoice-sheet{position:relative;width:min(600px,100%);aspect-ratio:3/4;background:#fff;margin:0 auto;box-shadow:0 4px 20px rgba(15,23,42,.1);font-size:12px;overflow:hidden}
 .invoice-sheet .block{position:absolute;overflow:hidden}
 .invoice-sheet .brand-name{font-family:var(--display);font-weight:700;font-size:18px}
@@ -1137,23 +1120,6 @@ input,select,textarea{
     </div>
     <div class="credit-hint" id="clientCreditHint"></div>
   </div>
-  <!-- Actions drawer: Create / Quote / Split / Hold / Return / Shift — always visible above coupon on mobile -->
-  <div class="sale-actions-drawer" id="saleActionsDrawer">
-    <button type="button" class="sale-actions-toggle" id="saleActionsToggle" aria-expanded="true">
-      <span>Actions</span>
-      <span class="sale-actions-chev">▾</span>
-    </button>
-    <div class="sale-actions-body" id="saleActionsBody">
-      <div class="sale-actions-grid">
-        <button class="btn btn-primary btn-sm" id="createInvoiceBtn" type="button">Create</button>
-        <button class="btn btn-ghost btn-sm" id="btnQuote" type="button" title="Save cart as quotation">Quote</button>
-        <button class="btn btn-ghost btn-sm" id="btnSplit" type="button">Split</button>
-        <button class="btn btn-ghost btn-sm" id="btnHold2" type="button">Hold</button>
-        <button class="btn btn-ghost btn-sm" id="btnReturn" type="button">Return</button>
-        <button class="btn btn-ghost btn-sm" id="btnShift" type="button">Shift</button>
-      </div>
-    </div>
-  </div>
   <div class="form-field"><label>Coupon</label>
     <div style="display:flex;gap:6px">
       <input id="couponInput" placeholder="CODE" style="flex:1;text-transform:uppercase">
@@ -1206,6 +1172,15 @@ input,select,textarea{
     <div class="form-field" style="margin:0"><label>Send via</label>
       <select id="waChannel"><option value="auto">Auto</option><option value="web">WhatsApp Web</option><option value="app">WhatsApp App</option></select>
     </div>
+  </div>
+  <div class="toolbar">
+    <button class="btn btn-primary btn-sm" id="createInvoiceBtn" type="button">Create</button>
+    <button class="btn btn-ghost btn-sm" id="btnQuote" type="button" title="Save cart as quotation">Quote</button>
+    <button class="btn btn-ghost btn-sm" id="btnSplit" type="button">Split</button>
+    <button class="btn btn-ghost btn-sm" id="btnHold2" type="button">Hold</button>
+    <button class="btn btn-ghost btn-sm" id="btnReturn" type="button">Return</button>
+    <button class="btn btn-ghost btn-sm" id="btnShift" type="button">Shift</button>
+    
   </div>
   <div class="msg" id="invoiceMsg"></div>
 </div><!-- /cartPanelSale -->
@@ -1327,21 +1302,6 @@ input,select,textarea{
     <div class="modal-actions">
       <button class="btn btn-ghost" type="button" data-close="shareSheetModal">Close</button>
     </div>
-  </div>
-</div>
-
-<!-- Post-invoice actions: Share / Download / Preview / Cancel -->
-<div class="modal-bg" id="postInvoiceModal">
-  <div class="modal" style="padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:420px">
-    <h3>Invoice ready</h3>
-    <p id="postInvoiceSub" style="font-size:13px;color:var(--muted);margin:-4px 0 14px"></p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <button type="button" class="btn" id="postInvShareBtn" style="min-height:52px;background:#128C7E;color:#fff;border-color:#128C7E;font-weight:600">Share</button>
-      <button type="button" class="btn btn-primary" id="postInvDownloadBtn" style="min-height:52px;font-weight:600">Download</button>
-      <button type="button" class="btn btn-ghost" id="postInvPreviewBtn" style="min-height:52px;font-weight:600">Preview</button>
-      <button type="button" class="btn btn-ghost" id="postInvCancelBtn" data-close="postInvoiceModal" style="min-height:52px;font-weight:600">Cancel</button>
-    </div>
-    <div class="msg" id="postInvoiceMsg" style="margin-top:10px"></div>
   </div>
 </div>
 
@@ -1887,19 +1847,15 @@ function blobToBase64(blob){
   });
 }
 
-/** Save file so it can appear in Downloads / Gallery / share targets.
- *  meta.silent = true → write only, never open system share sheet (fixes multi-share).
- */
+/** Save file so it can appear in Downloads / Gallery / share targets */
 async function saveBlobToDevice(blob, filename, meta){
-  meta = meta || {};
-  const silent = !!meta.silent;
-  const item = registerOrbitDownload(blob, filename, meta);
-  const mime = (blob && blob.type) || meta.mime || "application/octet-stream";
+  const item = registerOrbitDownload(blob, filename, meta || {});
+  const mime = (blob && blob.type) || (meta && meta.mime) || "application/octet-stream";
   const isImage = /^image\//i.test(mime) || /\.png$/i.test(filename) || /\.jpe?g$/i.test(filename);
-  const title = meta.title || filename;
-  const text = meta.text || "File from TechSerenia";
+  const title = (meta && meta.title) || filename;
+  const text = (meta && meta.text) || "File from TechSerenia";
 
-  // 1) Capacitor: write to external Pictures (gallery-friendly) + Documents
+  // 1) Capacitor: write to external Pictures (gallery-friendly) + Documents, then Share with files[]
   try{
     const Cap = window.Capacitor;
     const plugins = Cap && (Cap.Plugins || (Cap.Plugins = {}));
@@ -1907,6 +1863,7 @@ async function saveBlobToDevice(blob, filename, meta){
     const Share = plugins && (plugins.Share || window.Share);
     if(Filesystem && Filesystem.writeFile){
       const b64 = await blobToBase64(blob);
+      // Images: try public Pictures path first so Gallery apps can see them
       const tryPaths = isImage
         ? [
             { path: "Pictures/TechSerenia/" + filename, dirs: ["EXTERNAL", "EXTERNAL_STORAGE"] },
@@ -1929,8 +1886,7 @@ async function saveBlobToDevice(blob, filename, meta){
           }catch(eDir){}
         }
       }
-      // Only open share sheet when NOT silent
-      if(!silent && Share && Share.share && uri){
+      if(Share && Share.share && uri){
         try{
           await Share.share({ title: title, text: text, files: [uri], url: uri, dialogTitle: "Save or share" });
           try{ toast("Choose Gallery, WhatsApp, or Files"); }catch(e){}
@@ -1943,48 +1899,44 @@ async function saveBlobToDevice(blob, filename, meta){
           }catch(e2){ console.warn("Cap Share", e2); }
         }
       }
-      if(!silent && window.__orbitNativeShare){
+      // Prefer unified helper
+      if(window.__orbitNativeShare){
         try{
           const ok = await window.__orbitNativeShare({ blob: blob, filename: filename, title: title, text: text });
           if(ok){ try{ toast("Choose Gallery, WhatsApp, or Files"); }catch(e){} return item; }
         }catch(e){}
       }
-      if(uri){
-        try{ toast(silent ? "Saved to gallery / Downloads" : "Saved on device"); }catch(e){}
-        return item;
-      }
+      if(uri){ try{ toast("Saved on device"); }catch(e){} return item; }
     }
   }catch(eCap){ console.warn("Capacitor save", eCap); }
 
-  // 2) Share helpers only when not silent
-  if(!silent){
-    try{
-      if(window.__orbitNativeShare){
-        const ok = await window.__orbitNativeShare({ blob: blob, filename: filename, title: title, text: text });
-        if(ok) return item;
-      }
-    }catch(e){}
-    try{
-      if(navigator.share){
-        let file = null;
-        try{ file = new File([blob], filename, { type: mime }); }catch(e){ file = null; }
-        if(file && (!navigator.canShare || navigator.canShare({ files: [file] }))){
-          try{
-            await navigator.share({ files: [file], title: title, text: text });
-            try{ toast("Pick Gallery, WhatsApp, or Files"); }catch(e){}
-            return item;
-          }catch(eShareTry){
-            if(eShareTry && eShareTry.name === "AbortError") return item;
-          }
+  // 2) Unified helper / Web Share with file
+  try{
+    if(window.__orbitNativeShare){
+      const ok = await window.__orbitNativeShare({ blob: blob, filename: filename, title: title, text: text });
+      if(ok) return item;
+    }
+  }catch(e){}
+  try{
+    if(navigator.share){
+      let file = null;
+      try{ file = new File([blob], filename, { type: mime }); }catch(e){ file = null; }
+      if(file && (!navigator.canShare || navigator.canShare({ files: [file] }))){
+        try{
+          await navigator.share({ files: [file], title: title, text: text });
+          try{ toast("Pick Gallery, WhatsApp, or Files"); }catch(e){}
+          return item;
+        }catch(eShareTry){
+          if(eShareTry && eShareTry.name === "AbortError") return item;
         }
       }
-    }catch(eShare2){
-      if(eShare2 && eShare2.name === "AbortError") return item;
-      console.warn("navigator.share", eShare2);
     }
+  }catch(eShare2){
+    if(eShare2 && eShare2.name === "AbortError") return item;
+    console.warn("navigator.share", eShare2);
   }
 
-  // 3) Classic download anchor (always OK for silent download)
+  // 3) Classic download anchor
   try{
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1994,7 +1946,7 @@ async function saveBlobToDevice(blob, filename, meta){
     document.body.appendChild(a);
     a.click();
     setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} }, 80000);
-    try{ toast(silent ? "Saved — check gallery / Downloads" : "File ready in app Downloads"); }catch(e){}
+    try{ toast("File ready in app Downloads"); }catch(e){}
   }catch(e){ console.warn("downloadBlob trigger", e); }
   return item;
 }
@@ -2116,10 +2068,7 @@ function openModal(id){
 }
 function closeModal(id){
   var el = document.getElementById(id);
-  if(el){
-    el.classList.remove("open");
-    if(id === "postInvoiceModal") el.style.display = "";
-  }
+  if(el) el.classList.remove("open");
 }
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),2200); }
 
@@ -2221,283 +2170,6 @@ async function prepareAndOpenInvoiceShare(fmt){
   }catch(e){}
   openModal("shareSheetModal");
 }
-
-/** After invoice create: simple popup Share / Download / Preview / Cancel */
-function openPostInvoiceActions(){
-  try{
-    var el = document.getElementById("postInvoiceModal");
-    if(!el){
-      console.warn("postInvoiceModal missing from DOM");
-      toast("Invoice saved");
-      try{ openModal("exportModal"); }catch(e){}
-      return;
-    }
-    try{
-      var sub = document.getElementById("postInvoiceSub");
-      if(sub && lastInvoicePayload){
-        var phone = "";
-        try{ if(typeof clientPhoneForSale === "function") phone = clientPhoneForSale() || ""; }catch(ePh){}
-        var clientLabel = lastInvoicePayload.clientName || "Walk-in";
-        var invLabel = lastInvoicePayload.invoiceNumber || "Invoice";
-        var totLabel = (typeof money === "function") ? money(lastInvoicePayload.total) : String(lastInvoicePayload.total || "");
-        sub.textContent = invLabel + " · " + totLabel + " · " + clientLabel + (phone ? (" · WA " + phone) : "");
-      } else if(sub){
-        sub.textContent = "Invoice created";
-      }
-    }catch(eSub){ console.warn(eSub); }
-    try{
-      var msg = document.getElementById("postInvoiceMsg");
-      if(msg){ msg.textContent = ""; msg.className = "msg"; }
-    }catch(eMsg){}
-    // Force-open (openModal + direct class) so it always shows
-    try{ openModal("postInvoiceModal"); }catch(eOm){}
-    el.classList.add("open");
-    el.style.display = "flex";
-    try{ toast("Invoice ready"); }catch(eT){}
-  }catch(eAll){
-    console.error("openPostInvoiceActions", eAll);
-    try{ openModal("exportModal"); }catch(e2){}
-  }
-}
-
-async function postInvoiceBuildPngBlob(){
-  if(!lastInvoicePayload) return null;
-  if(typeof invoiceHtmlToCanvas !== "function") return null;
-  const invNo = String(lastInvoicePayload.invoiceNumber || lastInvoiceId || "invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
-  try{
-    const canvas = await invoiceHtmlToCanvas(lastInvoicePayload, 2);
-    let blob = await new Promise(function(resolve){ try{ canvas.toBlob(function(b){ resolve(b); }, "image/png"); }catch(e){ resolve(null); } });
-    if(!blob){
-      const pngUrl = canvas.toDataURL("image/png");
-      const res = await fetch(pngUrl);
-      blob = await res.blob();
-    }
-    return { blob: blob, filename: "invoice-" + invNo + ".png", mime: "image/png", invNo: invNo };
-  }catch(e){
-    console.warn("postInvoiceBuildPngBlob", e);
-    return null;
-  }
-}
-
-function postInvoiceBuildMsgText(){
-  const invNo = String((lastInvoicePayload && lastInvoicePayload.invoiceNumber) || "invoice");
-  const brand = (typeof branding !== "undefined" && branding && (branding.brand_name || branding.brandName)) || "OrbitBills";
-  const total = lastInvoicePayload ? money(lastInvoicePayload.total) : "";
-  const clientName = (lastInvoicePayload && lastInvoicePayload.clientName) || "";
-  return "Hello" + (clientName ? " " + clientName : "") + ",\n" +
-    "Please find your invoice *" + invNo + "* from *" + brand + "*.\n" +
-    "Total: " + total + "\n" +
-    "Status: " + ((lastInvoicePayload && lastInvoicePayload.status) || "");
-}
-
-window.__orbitPostShareBusy = false;
-
-async function postInvoiceShare(){
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  if(window.__orbitPostShareBusy) return;
-  window.__orbitPostShareBusy = true;
-  const msgEl = document.getElementById("postInvoiceMsg");
-  if(msgEl){ msgEl.textContent = "Preparing share…"; msgEl.className = "msg"; }
-  const phone = (typeof clientPhoneForSale === "function") ? clientPhoneForSale() : "";
-  const msgText = postInvoiceBuildMsgText();
-  const invNo = String(lastInvoicePayload.invoiceNumber || "invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
-
-  try{
-    // Build PNG once
-    const built = await postInvoiceBuildPngBlob();
-    if(!built || !built.blob){
-      if(msgEl){ msgEl.textContent = "Could not build invoice image"; msgEl.className = "msg err"; }
-      toast("Share failed");
-      return;
-    }
-
-    // Silent save to gallery (no share sheet) so file is available
-    try{
-      if(typeof saveBlobToDevice === "function"){
-        await saveBlobToDevice(built.blob, built.filename, {
-          kind: "png", mime: "image/png", silent: true,
-          invoiceNumber: lastInvoicePayload.invoiceNumber, total: lastInvoicePayload.total,
-          title: "Invoice " + invNo, text: msgText
-        });
-      }
-    }catch(eSave){ console.warn(eSave); }
-
-    // ONE share sheet only — attaches the PNG so WhatsApp can receive the image
-    let shared = false;
-    try{
-      if(window.__orbitNativeShare){
-        shared = !!(await window.__orbitNativeShare({
-          blob: built.blob,
-          filename: built.filename,
-          title: "Invoice " + invNo,
-          text: msgText
-        }));
-      }
-    }catch(eNat){ console.warn("native share", eNat); }
-
-    if(!shared){
-      try{
-        const Cap = window.Capacitor;
-        const Share = Cap && Cap.Plugins && Cap.Plugins.Share;
-        const Filesystem = Cap && Cap.Plugins && Cap.Plugins.Filesystem;
-        if(Share && Share.share && Filesystem && Filesystem.writeFile){
-          const b64 = await blobToBase64(built.blob);
-          const path = "TechSerenia/" + built.filename;
-          await Filesystem.writeFile({ path: path, data: b64, directory: "CACHE", recursive: true });
-          const uriRes = await Filesystem.getUri({ path: path, directory: "CACHE" });
-          const uri = uriRes && (uriRes.uri || uriRes);
-          if(uri){
-            await Share.share({ title: "Invoice " + invNo, text: msgText, files: [uri], url: uri, dialogTitle: "Share invoice" });
-            shared = true;
-          }
-        }
-      }catch(eCap){ console.warn(eCap); }
-    }
-
-    if(!shared && navigator.share){
-      try{
-        const file = new File([built.blob], built.filename, { type: "image/png" });
-        if(!navigator.canShare || navigator.canShare({ files: [file] })){
-          await navigator.share({ files: [file], title: "Invoice " + invNo, text: msgText });
-          shared = true;
-        }
-      }catch(eWeb){
-        if(eWeb && eWeb.name === "AbortError"){ shared = true; }
-      }
-    }
-
-    // Fallback: open WhatsApp chat (text only — wa.me cannot attach files)
-    if(!shared){
-      const waUrl = phone
-        ? ("https://wa.me/" + phone + "?text=" + encodeURIComponent(msgText))
-        : ("https://wa.me/?text=" + encodeURIComponent(msgText));
-      try{
-        const isCap = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-        const isMobile = isCap || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-        if(isMobile) window.location.href = waUrl;
-        else {
-          const w = window.open(waUrl, "_blank");
-          if(!w) window.location.href = waUrl;
-        }
-      }catch(e){ window.location.href = waUrl; }
-    }
-
-    if(msgEl){
-      msgEl.textContent = shared
-        ? "Share sheet opened — pick WhatsApp to send the invoice image"
-        : (phone ? ("Opening WhatsApp for " + phone) : "Opening WhatsApp — choose contact");
-      msgEl.className = "msg ok";
-    }
-    try{ if(window.__orbitHaptic) window.__orbitHaptic("success"); }catch(e){}
-    try{ closeModal("postInvoiceModal"); }catch(e){}
-  }catch(eAll){
-    console.error(eAll);
-    if(msgEl){ msgEl.textContent = "Share failed"; msgEl.className = "msg err"; }
-    toast("Share failed");
-  }finally{
-    window.__orbitPostShareBusy = false;
-  }
-}
-
-async function postInvoiceDownload(){
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  const msgEl = document.getElementById("postInvoiceMsg");
-  if(msgEl){ msgEl.textContent = "Saving to gallery…"; msgEl.className = "msg"; }
-  try{
-    const built = await postInvoiceBuildPngBlob();
-    if(!built || !built.blob){
-      if(msgEl){ msgEl.textContent = "Could not build invoice image"; msgEl.className = "msg err"; }
-      toast("Download failed");
-      return;
-    }
-    // Silent: write to gallery only — never open share sheet
-    if(typeof saveBlobToDevice === "function"){
-      await saveBlobToDevice(built.blob, built.filename, {
-        kind: "png", mime: "image/png", silent: true,
-        invoiceNumber: lastInvoicePayload.invoiceNumber, total: lastInvoicePayload.total
-      });
-    } else {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(built.blob);
-      a.download = built.filename;
-      a.click();
-      setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
-    }
-    if(msgEl){ msgEl.textContent = "Saved — check gallery / Downloads"; msgEl.className = "msg ok"; }
-    toast("Invoice downloaded");
-    try{ if(window.__orbitHaptic) window.__orbitHaptic("success"); }catch(e){}
-  }catch(e){
-    console.error(e);
-    if(msgEl){ msgEl.textContent = "Download failed"; msgEl.className = "msg err"; }
-    toast("Download failed");
-  }
-}
-
-function postInvoicePreview(){
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  try{ closeModal("postInvoiceModal"); }catch(e){}
-  try{
-    // Force A4 paper for proper full invoice view
-    try{
-      const paperSel = document.getElementById("printPaperSize");
-      if(paperSel) paperSel.value = "a4";
-    }catch(eP){}
-    const el = document.getElementById("exportLabel");
-    if(el) el.textContent = (lastInvoicePayload.invoiceNumber || "") + " · " + money(lastInvoicePayload.total) + " · " + (lastInvoicePayload.status || "");
-    if(typeof showLayoutPreview === "function") showLayoutPreview("exportPreview");
-    const shell = document.getElementById("exportPreviewShell");
-    if(shell){
-      shell.style.display = "block";
-      shell.style.maxHeight = "none";
-      shell.style.overflow = "auto";
-      shell.classList.add("preview-fullscreen");
-    }
-    const modal = document.querySelector("#exportModal .modal");
-    if(modal){
-      modal.classList.add("preview-fs-modal");
-      modal.style.maxHeight = "98vh";
-    }
-    openModal("exportModal");
-    setTimeout(function(){
-      try{ if(window.__orbitScaleInvoicePreview) window.__orbitScaleInvoicePreview(); }catch(e){}
-      try{
-        const prev = document.getElementById("exportPreview");
-        if(prev){
-          prev.style.transformOrigin = "top center";
-          prev.style.width = "100%";
-        }
-      }catch(e2){}
-    }, 100);
-  }catch(e){
-    console.warn(e);
-    toast("Preview unavailable");
-  }
-}
-
-(function bindPostInvoiceActions(){
-  function bind(){
-    const shareBtn = document.getElementById("postInvShareBtn");
-    const dlBtn = document.getElementById("postInvDownloadBtn");
-    const prevBtn = document.getElementById("postInvPreviewBtn");
-    if(shareBtn && !shareBtn.dataset.bound){
-      shareBtn.dataset.bound = "1";
-      shareBtn.addEventListener("click", function(){ postInvoiceShare(); });
-    }
-    if(dlBtn && !dlBtn.dataset.bound){
-      dlBtn.dataset.bound = "1";
-      dlBtn.addEventListener("click", function(){ postInvoiceDownload(); });
-    }
-    if(prevBtn && !prevBtn.dataset.bound){
-      prevBtn.dataset.bound = "1";
-      prevBtn.addEventListener("click", function(){ postInvoicePreview(); });
-    }
-  }
-  try{ bind(); }catch(e){}
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
-  window.addEventListener("load", bind);
-  setTimeout(bind, 300);
-})();
-
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>closeModal(b.dataset.close)));
 /* Add X close on every modal / drawer */
 (function ensureModalCloseButtons(){
@@ -3517,24 +3189,14 @@ async function finalizeSale(payload, doPrint){
   try{ playInvoiceSuccessSound(); }catch(e){}
   try{ if(typeof window.__orbitUpdateWakeLock==="function") window.__orbitUpdateWakeLock(); }catch(e){}
   try{
-    if(doPrint){
-      printLast();
-    } else {
-      // After creating invoice: always show Share / Download / Preview / Cancel
-      setTimeout(function(){
-        try{
-          if(typeof openPostInvoiceActions === "function"){
-            openPostInvoiceActions();
-          } else {
-            var m = document.getElementById("postInvoiceModal");
-            if(m){ m.classList.add("open"); m.style.display = "flex"; }
-            else { try{ openModal("exportModal"); }catch(e3){} }
-          }
-        }catch(ePost){
-          console.error("post invoice popup", ePost);
-          try{ openModal("exportModal"); }catch(e2){}
-        }
-      }, 120);
+    if(doPrint) printLast();
+    else {
+      // Prepare invoice file then open share sheet for cashier
+      try{
+        await prepareAndOpenInvoiceShare("png");
+      }catch(eShare){
+        try{ openModal("exportModal"); }catch(e2){}
+      }
     }
   }catch(e){
     console.error(e);
@@ -3555,22 +3217,8 @@ async function payAndPrint(){
     await finalizeSale(buildCheckoutPayload({ status:"paid", amountPaid:t.total, payments:[{method, amount:t.total}] }), true);
   }catch(e){ console.error(e); toast("Pay error"); }
 }
-document.getElementById("createInvoiceBtn")?.addEventListener("click", createInvoice);
-document.getElementById("btnPayPrint")?.addEventListener("click", payAndPrint);
-
-/* Sale actions drawer toggle (below client / above coupon) */
-(function(){
-  var tog = document.getElementById("saleActionsToggle");
-  var drawer = document.getElementById("saleActionsDrawer");
-  if(tog && drawer && !tog.dataset.bound){
-    tog.dataset.bound = "1";
-    tog.addEventListener("click", function(){
-      var open = !drawer.classList.contains("collapsed");
-      drawer.classList.toggle("collapsed", open);
-      tog.setAttribute("aria-expanded", open ? "false" : "true");
-    });
-  }
-})();
+document.getElementById("createInvoiceBtn").addEventListener("click", createInvoice);
+document.getElementById("btnPayPrint").addEventListener("click", payAndPrint);
 
 /* Split */
 function openSplitModal(){
