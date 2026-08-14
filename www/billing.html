@@ -153,8 +153,8 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
 
   html,body{max-width:100%;overflow-x:hidden}
   body{
-    /* Reserve space for fixed header — match header height exactly (no extra gap) */
-    padding-top:calc(48px + env(safe-area-inset-top, 0px));
+    /* Match header height (slightly taller so logo sits a touch lower) */
+    padding-top:calc(54px + env(safe-area-inset-top, 0px));
     background:#f8fafc;
     -webkit-tap-highlight-color:transparent;
     -webkit-user-select:none;
@@ -162,7 +162,7 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
   }
   body input, body textarea, body select{ -webkit-user-select:text; user-select:text; }
 
-  /* Permanent white strip behind status bar (battery / time) — never overscrolled */
+  /* Permanent strip behind status bar */
   body::before{
     content:"";
     position:fixed;
@@ -174,15 +174,15 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
     pointer-events:none;
   }
 
-  /* Fixed header — solid bill-book blue bar */
+  /* Fixed header — logo panel nudged slightly down */
   header.app-bar{
     position:fixed!important;
     top:0;left:0;right:0;
     z-index:65;
-    padding:6px 12px;
-    padding-top:max(6px, env(safe-area-inset-top, 0px));
-    min-height:calc(48px + env(safe-area-inset-top, 0px));
-    height:calc(48px + env(safe-area-inset-top, 0px));
+    padding:8px 12px 10px;
+    padding-top:max(10px, calc(env(safe-area-inset-top, 0px) + 4px));
+    min-height:calc(54px + env(safe-area-inset-top, 0px));
+    height:calc(54px + env(safe-area-inset-top, 0px));
     flex-wrap:nowrap;gap:8px;
     align-items:center;
     box-sizing:border-box;
@@ -461,14 +461,16 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
   /* Low banners compact */
   .low-banner{font-size:12.5px;padding:8px 10px;border-radius:10px;margin-bottom:8px}
 
-  /* Sticky cart bar — sits above bottom nav */
+  /* Sticky cart bar — flush on top of bottom nav (same height token, no gap) */
   .m-cart-bar{
     display:flex!important;position:fixed;left:0;right:0;
-    bottom:calc(56px + env(safe-area-inset-bottom,0px));z-index:100;
-    align-items:center;gap:8px;
-    padding:10px 12px;
+    bottom:calc(54px + env(safe-area-inset-bottom,0px));z-index:100;
+    align-items:center;gap:6px;
+    padding:8px 10px;
     background:#0f172a;color:#fff;
-    box-shadow:0 -8px 28px rgba(15,23,42,.28);
+    box-shadow:none;
+    border-bottom:0;
+    margin:0;
     cursor:pointer;-webkit-tap-highlight-color:transparent;
   }
   #orbitNavFill,.orbit-nav-fill{
@@ -479,10 +481,12 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
   .pos-bottom-nav{
     display:flex!important;position:fixed;left:0;right:0;
     bottom:0;z-index:101;
-    height:calc(56px + env(safe-area-inset-bottom,0px));
-    padding:4px 2px calc(4px + env(safe-area-inset-bottom,0px));
-    background:#fff;border-top:1px solid #e2e8f0;
-    box-shadow:0 -2px 12px rgba(15,23,42,.06);
+    height:calc(54px + env(safe-area-inset-bottom,0px));
+    padding:2px 2px calc(2px + env(safe-area-inset-bottom,0px));
+    background:#fff;
+    border-top:0;
+    box-shadow:none;
+    margin:0;
     align-items:stretch;justify-content:space-around;gap:0;
   }
   .pos-nav-item{
@@ -661,16 +665,21 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
   #categoryFilter{
     flex:0 1 140px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 10px;
   }
-  /* Cart bar already sits above bottom nav — do not add safe-area again (was causing a gap) */
+  /* Keep cart bar flush with bottom nav — identical bottom offset */
   .m-cart-bar{
     padding:8px 10px!important;
     min-height:0!important;
-    bottom:calc(56px + env(safe-area-inset-bottom,0px))!important;
-    box-shadow:0 -4px 16px rgba(15,23,42,.2)!important;
+    bottom:calc(54px + env(safe-area-inset-bottom,0px))!important;
+    box-shadow:none!important;
+    border-bottom:0!important;
+    margin:0!important;
   }
   .pos-bottom-nav{
-    height:calc(52px + env(safe-area-inset-bottom,0px))!important;
+    height:calc(54px + env(safe-area-inset-bottom,0px))!important;
     padding:2px 2px calc(2px + env(safe-area-inset-bottom,0px))!important;
+    border-top:0!important;
+    box-shadow:none!important;
+    margin:0!important;
   }
 }
 
@@ -914,6 +923,19 @@ input,select,textarea{
 @keyframes skShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 </style>
 
+
+<style data-orbit-native-polish>
+/* Native-feel polish for Capacitor / phone */
+@media (max-width: 768px) {
+  body { overscroll-behavior-y: none; }
+  .btn, button { -webkit-tap-highlight-color: transparent; }
+  .modal-bg.open { animation: orbitSheetIn .22s ease; }
+}
+@keyframes orbitSheetIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
 </head>
 <body>
 <div id="orbitBoot" style="display:flex;position:fixed;inset:0;z-index:2147483646;background:#0b3d91;flex-direction:column;align-items:center;justify-content:center;padding:24px;transition:opacity .28s ease,visibility .28s ease;">
@@ -1278,21 +1300,6 @@ input,select,textarea{
 
 
 
-
-
-<div class="modal-bg" id="postInvoiceModal">
-  <div class="modal" style="padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:400px">
-    <h3 style="margin-bottom:4px">Invoice created</h3>
-    <p id="postInvoiceSub" style="font-size:13px;color:var(--muted);margin:0 0 16px"></p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <button type="button" class="btn" id="postInvShare" style="min-height:52px;background:#128C7E;color:#fff;border-color:#128C7E;font-weight:700">Share</button>
-      <button type="button" class="btn btn-primary" id="postInvDownload" style="min-height:52px;font-weight:700">Download</button>
-      <button type="button" class="btn btn-ghost" id="postInvPreview" style="min-height:52px;font-weight:700">Preview</button>
-      <button type="button" class="btn btn-ghost" id="postInvCancel" data-close="postInvoiceModal" style="min-height:52px;font-weight:700">Cancel</button>
-    </div>
-    <div class="msg" id="postInvoiceMsg" style="margin-top:12px"></div>
-  </div>
-</div>
 
 <div class="modal-bg" id="shareSheetModal">
   <div class="modal" style="padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
@@ -2110,188 +2117,6 @@ function playInvoiceSuccessSound(){
     tone(1174.66, now + 0.09, 0.16, 0.07);
   }catch(e){}
 }
-
-
-/* ---------- Post-invoice popup: Share / Download / Preview / Cancel ---------- */
-async function openPostInvoicePopup(){
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  const sub = document.getElementById("postInvoiceSub");
-  if(sub){
-    sub.textContent = (lastInvoicePayload.invoiceNumber || "Invoice")
-      + " · " + money(lastInvoicePayload.total)
-      + " · " + (lastInvoicePayload.clientName || "Walk-in");
-  }
-  const msg = document.getElementById("postInvoiceMsg");
-  if(msg){ msg.textContent = ""; msg.className = "msg"; }
-  openModal("postInvoiceModal");
-}
-
-async function buildInvoicePngBlob(){
-  if(!lastInvoicePayload) return null;
-  const invNo = (lastInvoicePayload.invoiceNumber || lastInvoiceId || "invoice").toString().replace(/[^a-zA-Z0-9_-]/g, "_");
-  if(typeof invoiceHtmlToCanvas !== "function") return null;
-  const canvas = await invoiceHtmlToCanvas(lastInvoicePayload, 2);
-  let blob = await new Promise(function(resolve){
-    try{ canvas.toBlob(function(b){ resolve(b); }, "image/png"); }
-    catch(e){ resolve(null); }
-  });
-  if(!blob){
-    try{
-      const pngUrl = canvas.toDataURL("image/png");
-      const res = await fetch(pngUrl);
-      blob = await res.blob();
-    }catch(e){ blob = null; }
-  }
-  if(blob && !(blob instanceof Blob)) blob = new Blob([blob], { type: "image/png" });
-  if(blob && blob.type !== "image/png") blob = new Blob([blob], { type: "image/png" });
-  return { blob: blob, filename: "invoice-" + invNo + ".png", invNo: invNo };
-}
-
-async function postInvoiceShare(){
-  const msg = document.getElementById("postInvoiceMsg");
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  if(msg){ msg.textContent = "Preparing…"; msg.className = "msg"; }
-  try{
-    const phone = (typeof clientPhoneForSale === "function") ? clientPhoneForSale() : "";
-    const brand = (branding && (branding.brand_name || branding.brandName)) || "OrbitBills";
-    const invNo = String(lastInvoicePayload.invoiceNumber || "invoice");
-    const clientName = lastInvoicePayload.clientName || "";
-    const total = money(lastInvoicePayload.total);
-    const msgText =
-      "Hello" + (clientName ? " " + clientName : "") + ",\n" +
-      "Please find your invoice *" + invNo + "* from *" + brand + "*.\n" +
-      "Total: " + total + "\n" +
-      "Status: " + (lastInvoicePayload.status || "");
-
-    let fileInfo = null;
-    try{ fileInfo = await buildInvoicePngBlob(); }catch(e){ console.warn(e); }
-    if(fileInfo && fileInfo.blob){
-      try{
-        registerOrbitDownload(fileInfo.blob, fileInfo.filename, {
-          kind: "png", mime: "image/png",
-          invoiceNumber: lastInvoicePayload.invoiceNumber,
-          total: lastInvoicePayload.total
-        });
-      }catch(e){}
-      try{
-        if(window.__orbitNativeShare){
-          await window.__orbitNativeShare({
-            blob: fileInfo.blob,
-            filename: fileInfo.filename,
-            title: "Invoice " + invNo,
-            text: msgText
-          });
-        }
-      }catch(e){}
-    }
-
-    // Client selected → open WhatsApp chat for that number
-    // No client → open WhatsApp so cashier can pick a contact
-    let waUrl;
-    if(phone){
-      waUrl = "https://wa.me/" + phone + "?text=" + encodeURIComponent(msgText);
-    } else {
-      waUrl = "https://wa.me/?text=" + encodeURIComponent(msgText);
-    }
-    try{
-      const isCap = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-      const isMobile = isCap || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-      if(isMobile) window.location.href = waUrl;
-      else {
-        const w = window.open(waUrl, "_blank");
-        if(!w) window.location.href = waUrl;
-      }
-    }catch(e){
-      try{ window.location.href = waUrl; }catch(e2){}
-    }
-    if(msg){
-      msg.textContent = phone
-        ? ("Opening WhatsApp for " + phone)
-        : "Opening WhatsApp — pick a contact";
-      msg.className = "msg ok";
-    }
-    toast(phone ? ("WhatsApp · " + phone) : "WhatsApp — select contact");
-    try{ if(window.__orbitHaptic) window.__orbitHaptic("success"); }catch(e){}
-  }catch(err){
-    console.error(err);
-    if(msg){ msg.textContent = "Share failed"; msg.className = "msg err"; }
-    toast("Share failed");
-  }
-}
-
-async function postInvoiceDownload(){
-  const msg = document.getElementById("postInvoiceMsg");
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  if(msg){ msg.textContent = "Saving to gallery…"; msg.className = "msg"; }
-  try{
-    const fileInfo = await buildInvoicePngBlob();
-    if(!fileInfo || !fileInfo.blob){
-      if(msg){ msg.textContent = "Could not build invoice image"; msg.className = "msg err"; }
-      return;
-    }
-    if(typeof saveBlobToDevice === "function"){
-      await saveBlobToDevice(fileInfo.blob, fileInfo.filename, {
-        kind: "png", mime: "image/png",
-        invoiceNumber: lastInvoicePayload.invoiceNumber,
-        total: lastInvoicePayload.total,
-        title: "Invoice " + (lastInvoicePayload.invoiceNumber || ""),
-        text: "Invoice from TechSerenia"
-      });
-    } else if(typeof downloadBlob === "function"){
-      downloadBlob(fileInfo.blob, fileInfo.filename, {
-        kind: "png", mime: "image/png",
-        invoiceNumber: lastInvoicePayload.invoiceNumber,
-        total: lastInvoicePayload.total
-      });
-    }
-    if(msg){ msg.textContent = "Saved — check Gallery / Downloads"; msg.className = "msg ok"; }
-    toast("Invoice saved to gallery");
-  }catch(err){
-    console.error(err);
-    if(msg){ msg.textContent = "Download failed"; msg.className = "msg err"; }
-    toast("Download failed");
-  }
-}
-
-function postInvoicePreview(){
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  try{
-    const el = document.getElementById("exportLabel");
-    if(el) el.textContent =
-      (lastInvoicePayload.invoiceNumber || "") + " · " + money(lastInvoicePayload.total) + " · " + (lastInvoicePayload.status || "");
-    invoicePreviewLayout = layout;
-    const note = document.getElementById("exportLayoutNote");
-    if(note) note.textContent = layout ? ("Layout: " + (layout.name || layout.id)) : "Classic layout";
-    showLayoutPreview("exportPreview");
-    const shell = document.getElementById("exportPreviewShell");
-    if(shell) shell.style.display = "block";
-  }catch(e){ console.warn(e); }
-  closeModal("postInvoiceModal");
-  openModal("exportModal");
-  try{ if(window.__orbitScaleInvoicePreview) window.__orbitScaleInvoicePreview(); }catch(e){}
-}
-
-(function bindPostInvoiceButtons(){
-  function bind(){
-    var a;
-    a = document.getElementById("postInvShare");
-    if(a && !a.dataset.bound){ a.dataset.bound = "1"; a.addEventListener("click", function(){ postInvoiceShare(); }); }
-    a = document.getElementById("postInvDownload");
-    if(a && !a.dataset.bound){ a.dataset.bound = "1"; a.addEventListener("click", function(){ postInvoiceDownload(); }); }
-    a = document.getElementById("postInvPreview");
-    if(a && !a.dataset.bound){ a.dataset.bound = "1"; a.addEventListener("click", function(){ postInvoicePreview(); }); }
-    a = document.getElementById("postInvCancel");
-    if(a && !a.dataset.bound){
-      a.dataset.bound = "1";
-      a.addEventListener("click", function(){ closeModal("postInvoiceModal"); });
-    }
-  }
-  try{ bind(); }catch(e){}
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
-  window.addEventListener("load", bind);
-  setTimeout(bind, 400);
-})();
-
 
 window.__orbitShareFmt = "png";
 
@@ -3326,6 +3151,7 @@ async function finalizeSale(payload, doPrint){
     }
     if (short.length) {
       toast("Low/out of stock: " + short.slice(0,3).join(", "));
+      try{ if(window.__orbitNotifyLowStock) window.__orbitNotifyLowStock(short); }catch(eN){}
     }
   }catch(e){}
   if(msg){ msg.textContent="Saving…"; msg.className="msg"; }
@@ -3384,14 +3210,19 @@ async function finalizeSale(payload, doPrint){
   try{ updateWhatsAppBtn(); }catch(e){}
   try{ if(window.__orbitHaptic) window.__orbitHaptic("success"); else if(navigator.vibrate) navigator.vibrate([12,40,12]); }catch(e){}
   try{ playInvoiceSuccessSound(); }catch(e){}
+  try{ if(window.__orbitPlaySuccessTone) window.__orbitPlaySuccessTone(); }catch(e){}
+  try{
+    var invNoN = (lastInvoicePayload && lastInvoicePayload.invoiceNumber) || (data && data.invoiceNumber) || "Invoice";
+    var totN = (typeof money === "function" && lastInvoicePayload) ? money(lastInvoicePayload.total) : "";
+    if(window.__orbitNotifyInvoice) window.__orbitNotifyInvoice(invNoN, totN);
+  }catch(e){}
   try{ if(typeof window.__orbitUpdateWakeLock==="function") window.__orbitUpdateWakeLock(); }catch(e){}
   try{
     if(doPrint) printLast();
     else {
-      // After creating invoice: show Share / Download / Preview / Cancel popup
+      // Prepare invoice file then open share sheet for cashier
       try{
-        if(typeof openPostInvoicePopup === "function") openPostInvoicePopup();
-        else openModal("postInvoiceModal");
+        await prepareAndOpenInvoiceShare("png");
       }catch(eShare){
         try{ openModal("exportModal"); }catch(e2){}
       }
@@ -3965,6 +3796,12 @@ async function runPosSync(force){
       banner.style.display="block";
       if(lowText) lowText.textContent="Low stock: "+low.slice(0,4).map(p=>p.name).join(", ");
       else banner.textContent="Low stock: "+low.slice(0,4).map(p=>p.name).join(", ");
+      try{
+        if(!sessionStorage.getItem("orbit_low_notif_sent")){
+          sessionStorage.setItem("orbit_low_notif_sent","1");
+          if(window.__orbitNotifyLowStock) window.__orbitNotifyLowStock(low.slice(0,6).map(function(x){ return x.name||x; }));
+        }
+      }catch(eN){}
       if(isMobilePos()){
         clearTimeout(window.__orbitLowBannerTimer);
         window.__orbitLowBannerTimer=setTimeout(()=>{ if(banner) banner.style.display="none"; }, 3000);
@@ -4268,6 +4105,12 @@ function refreshStockSummary(){
       if (!elE) return;
       const batches = (d && d.ok && d.batches) ? d.batches : [];
       if (!batches.length) { elE.innerHTML = '<span style="color:var(--muted)">None in 30 days</span>'; return; }
+      try{
+        if(batches.length && !sessionStorage.getItem("orbit_exp_notif_sent")){
+          sessionStorage.setItem("orbit_exp_notif_sent","1");
+          if(window.__orbitNotifyExpiring) window.__orbitNotifyExpiring(batches.slice(0,6).map(function(b){ return b.product_name||b.name||"Item"; }));
+        }
+      }catch(eN){}
       elE.innerHTML = batches.slice(0, 12).map(b =>
         `<div>${esc(b.product_name||b.name||"Item")} · ${esc(b.batch_number||"")} · exp ${esc(b.expiry_date||"")}</div>`
       ).join("") + (batches.length > 12 ? `<div style="opacity:.7">+${batches.length-12} more</div>` : "");

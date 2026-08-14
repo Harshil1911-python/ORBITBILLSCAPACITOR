@@ -1279,21 +1279,6 @@ input,select,textarea{
 
 
 
-
-<div class="modal-bg" id="postInvoiceModal">
-  <div class="modal" style="padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:400px">
-    <h3 style="margin-bottom:4px">Invoice created</h3>
-    <p id="postInvoiceSub" style="font-size:13px;color:var(--muted);margin:0 0 16px"></p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <button type="button" class="btn" id="postInvShare" style="min-height:52px;background:#128C7E;color:#fff;border-color:#128C7E;font-weight:700">Share</button>
-      <button type="button" class="btn btn-primary" id="postInvDownload" style="min-height:52px;font-weight:700">Download</button>
-      <button type="button" class="btn btn-ghost" id="postInvPreview" style="min-height:52px;font-weight:700">Preview</button>
-      <button type="button" class="btn btn-ghost" id="postInvCancel" data-close="postInvoiceModal" style="min-height:52px;font-weight:700">Cancel</button>
-    </div>
-    <div class="msg" id="postInvoiceMsg" style="margin-top:12px"></div>
-  </div>
-</div>
-
 <div class="modal-bg" id="shareSheetModal">
   <div class="modal" style="padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
     <h3>Share invoice</h3>
@@ -2110,188 +2095,6 @@ function playInvoiceSuccessSound(){
     tone(1174.66, now + 0.09, 0.16, 0.07);
   }catch(e){}
 }
-
-
-/* ---------- Post-invoice popup: Share / Download / Preview / Cancel ---------- */
-async function openPostInvoicePopup(){
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  const sub = document.getElementById("postInvoiceSub");
-  if(sub){
-    sub.textContent = (lastInvoicePayload.invoiceNumber || "Invoice")
-      + " · " + money(lastInvoicePayload.total)
-      + " · " + (lastInvoicePayload.clientName || "Walk-in");
-  }
-  const msg = document.getElementById("postInvoiceMsg");
-  if(msg){ msg.textContent = ""; msg.className = "msg"; }
-  openModal("postInvoiceModal");
-}
-
-async function buildInvoicePngBlob(){
-  if(!lastInvoicePayload) return null;
-  const invNo = (lastInvoicePayload.invoiceNumber || lastInvoiceId || "invoice").toString().replace(/[^a-zA-Z0-9_-]/g, "_");
-  if(typeof invoiceHtmlToCanvas !== "function") return null;
-  const canvas = await invoiceHtmlToCanvas(lastInvoicePayload, 2);
-  let blob = await new Promise(function(resolve){
-    try{ canvas.toBlob(function(b){ resolve(b); }, "image/png"); }
-    catch(e){ resolve(null); }
-  });
-  if(!blob){
-    try{
-      const pngUrl = canvas.toDataURL("image/png");
-      const res = await fetch(pngUrl);
-      blob = await res.blob();
-    }catch(e){ blob = null; }
-  }
-  if(blob && !(blob instanceof Blob)) blob = new Blob([blob], { type: "image/png" });
-  if(blob && blob.type !== "image/png") blob = new Blob([blob], { type: "image/png" });
-  return { blob: blob, filename: "invoice-" + invNo + ".png", invNo: invNo };
-}
-
-async function postInvoiceShare(){
-  const msg = document.getElementById("postInvoiceMsg");
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  if(msg){ msg.textContent = "Preparing…"; msg.className = "msg"; }
-  try{
-    const phone = (typeof clientPhoneForSale === "function") ? clientPhoneForSale() : "";
-    const brand = (branding && (branding.brand_name || branding.brandName)) || "OrbitBills";
-    const invNo = String(lastInvoicePayload.invoiceNumber || "invoice");
-    const clientName = lastInvoicePayload.clientName || "";
-    const total = money(lastInvoicePayload.total);
-    const msgText =
-      "Hello" + (clientName ? " " + clientName : "") + ",\n" +
-      "Please find your invoice *" + invNo + "* from *" + brand + "*.\n" +
-      "Total: " + total + "\n" +
-      "Status: " + (lastInvoicePayload.status || "");
-
-    let fileInfo = null;
-    try{ fileInfo = await buildInvoicePngBlob(); }catch(e){ console.warn(e); }
-    if(fileInfo && fileInfo.blob){
-      try{
-        registerOrbitDownload(fileInfo.blob, fileInfo.filename, {
-          kind: "png", mime: "image/png",
-          invoiceNumber: lastInvoicePayload.invoiceNumber,
-          total: lastInvoicePayload.total
-        });
-      }catch(e){}
-      try{
-        if(window.__orbitNativeShare){
-          await window.__orbitNativeShare({
-            blob: fileInfo.blob,
-            filename: fileInfo.filename,
-            title: "Invoice " + invNo,
-            text: msgText
-          });
-        }
-      }catch(e){}
-    }
-
-    // Client selected → open WhatsApp chat for that number
-    // No client → open WhatsApp so cashier can pick a contact
-    let waUrl;
-    if(phone){
-      waUrl = "https://wa.me/" + phone + "?text=" + encodeURIComponent(msgText);
-    } else {
-      waUrl = "https://wa.me/?text=" + encodeURIComponent(msgText);
-    }
-    try{
-      const isCap = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-      const isMobile = isCap || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-      if(isMobile) window.location.href = waUrl;
-      else {
-        const w = window.open(waUrl, "_blank");
-        if(!w) window.location.href = waUrl;
-      }
-    }catch(e){
-      try{ window.location.href = waUrl; }catch(e2){}
-    }
-    if(msg){
-      msg.textContent = phone
-        ? ("Opening WhatsApp for " + phone)
-        : "Opening WhatsApp — pick a contact";
-      msg.className = "msg ok";
-    }
-    toast(phone ? ("WhatsApp · " + phone) : "WhatsApp — select contact");
-    try{ if(window.__orbitHaptic) window.__orbitHaptic("success"); }catch(e){}
-  }catch(err){
-    console.error(err);
-    if(msg){ msg.textContent = "Share failed"; msg.className = "msg err"; }
-    toast("Share failed");
-  }
-}
-
-async function postInvoiceDownload(){
-  const msg = document.getElementById("postInvoiceMsg");
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  if(msg){ msg.textContent = "Saving to gallery…"; msg.className = "msg"; }
-  try{
-    const fileInfo = await buildInvoicePngBlob();
-    if(!fileInfo || !fileInfo.blob){
-      if(msg){ msg.textContent = "Could not build invoice image"; msg.className = "msg err"; }
-      return;
-    }
-    if(typeof saveBlobToDevice === "function"){
-      await saveBlobToDevice(fileInfo.blob, fileInfo.filename, {
-        kind: "png", mime: "image/png",
-        invoiceNumber: lastInvoicePayload.invoiceNumber,
-        total: lastInvoicePayload.total,
-        title: "Invoice " + (lastInvoicePayload.invoiceNumber || ""),
-        text: "Invoice from TechSerenia"
-      });
-    } else if(typeof downloadBlob === "function"){
-      downloadBlob(fileInfo.blob, fileInfo.filename, {
-        kind: "png", mime: "image/png",
-        invoiceNumber: lastInvoicePayload.invoiceNumber,
-        total: lastInvoicePayload.total
-      });
-    }
-    if(msg){ msg.textContent = "Saved — check Gallery / Downloads"; msg.className = "msg ok"; }
-    toast("Invoice saved to gallery");
-  }catch(err){
-    console.error(err);
-    if(msg){ msg.textContent = "Download failed"; msg.className = "msg err"; }
-    toast("Download failed");
-  }
-}
-
-function postInvoicePreview(){
-  if(!lastInvoicePayload){ toast("No invoice"); return; }
-  try{
-    const el = document.getElementById("exportLabel");
-    if(el) el.textContent =
-      (lastInvoicePayload.invoiceNumber || "") + " · " + money(lastInvoicePayload.total) + " · " + (lastInvoicePayload.status || "");
-    invoicePreviewLayout = layout;
-    const note = document.getElementById("exportLayoutNote");
-    if(note) note.textContent = layout ? ("Layout: " + (layout.name || layout.id)) : "Classic layout";
-    showLayoutPreview("exportPreview");
-    const shell = document.getElementById("exportPreviewShell");
-    if(shell) shell.style.display = "block";
-  }catch(e){ console.warn(e); }
-  closeModal("postInvoiceModal");
-  openModal("exportModal");
-  try{ if(window.__orbitScaleInvoicePreview) window.__orbitScaleInvoicePreview(); }catch(e){}
-}
-
-(function bindPostInvoiceButtons(){
-  function bind(){
-    var a;
-    a = document.getElementById("postInvShare");
-    if(a && !a.dataset.bound){ a.dataset.bound = "1"; a.addEventListener("click", function(){ postInvoiceShare(); }); }
-    a = document.getElementById("postInvDownload");
-    if(a && !a.dataset.bound){ a.dataset.bound = "1"; a.addEventListener("click", function(){ postInvoiceDownload(); }); }
-    a = document.getElementById("postInvPreview");
-    if(a && !a.dataset.bound){ a.dataset.bound = "1"; a.addEventListener("click", function(){ postInvoicePreview(); }); }
-    a = document.getElementById("postInvCancel");
-    if(a && !a.dataset.bound){
-      a.dataset.bound = "1";
-      a.addEventListener("click", function(){ closeModal("postInvoiceModal"); });
-    }
-  }
-  try{ bind(); }catch(e){}
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
-  window.addEventListener("load", bind);
-  setTimeout(bind, 400);
-})();
-
 
 window.__orbitShareFmt = "png";
 
@@ -3388,10 +3191,9 @@ async function finalizeSale(payload, doPrint){
   try{
     if(doPrint) printLast();
     else {
-      // After creating invoice: show Share / Download / Preview / Cancel popup
+      // Prepare invoice file then open share sheet for cashier
       try{
-        if(typeof openPostInvoicePopup === "function") openPostInvoicePopup();
-        else openModal("postInvoiceModal");
+        await prepareAndOpenInvoiceShare("png");
       }catch(eShare){
         try{ openModal("exportModal"); }catch(e2){}
       }
