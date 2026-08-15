@@ -214,7 +214,21 @@
 
   function blobToBase64(blob){ return new Promise(function(resolve, reject){ var r = new FileReader(); r.onload = function(){ var s = String(r.result || ""); var i = s.indexOf(","); resolve(i >= 0 ? s.slice(i + 1) : s); }; r.onerror = reject; r.readAsDataURL(blob); }); }
   window.__orbitNativeShare = async function(opts){
-    opts = opts || {}; var title = opts.title || "Invoice · TechSerenia"; var text = opts.text || "Invoice from TechSerenia"; var filename = opts.filename || ("invoice-" + Date.now() + ".png"); var blob = opts.blob; var Share = plugin("Share"); var Filesystem = plugin("Filesystem");
+    opts = opts || {};
+    // Prevent double system share sheet
+    if(window.__orbitShareBusy){ return true; }
+    window.__orbitShareBusy = true;
+    setTimeout(function(){ window.__orbitShareBusy = false; }, 4000);
+    var title = opts.title || "Invoice · TechSerenia";
+    var text = opts.text;
+    if(!text && typeof window.buildInvoiceShareText === "function"){
+      try{ text = window.buildInvoiceShareText(opts, (typeof lastInvoicePayload !== "undefined" ? lastInvoicePayload : null)); }catch(e){}
+    }
+    if(!text) text = "Invoice from OrbitBills · TechSerenia";
+    var filename = opts.filename || ("invoice-" + Date.now() + ".png");
+    var blob = opts.blob;
+    var Share = plugin("Share");
+    var Filesystem = plugin("Filesystem");
     if(hasCap() && Share && Share.share && Filesystem && Filesystem.writeFile && blob){
       try{
         var b64 = await blobToBase64(blob);
@@ -223,11 +237,29 @@
         for(var i = 0; i < attempts.length && !uri; i++){
           try{ await Filesystem.writeFile({ path: attempts[i].path, data: b64, directory: attempts[i].directory, recursive: true }); var uriRes = await Filesystem.getUri({ path: attempts[i].path, directory: attempts[i].directory }); uri = uriRes && (uriRes.uri || uriRes); }catch(eWrite){}
         }
-        if(uri){ try{ await Share.share({ title: title, text: text, dialogTitle: "Share invoice", files: [uri], url: uri }); return true; }catch(eFiles){ try{ await Share.share({ title: title, text: text, dialogTitle: "Share invoice", url: uri }); return true; }catch(eUrl){} } }
+        if(uri){
+          try{ await Share.share({ title: title, text: text, dialogTitle: "Share invoice", files: [uri] }); return true; }
+          catch(eFiles){
+            try{ await Share.share({ title: title, text: text, dialogTitle: "Share invoice", url: uri }); return true; }
+            catch(eUrl){}
+          }
+        }
       }catch(eCap){}
     }
-    if(navigator.share && blob && filename){ try{ var file = new File([blob], filename, { type: blob.type || (/\.pdf$/i.test(filename) ? "application/pdf" : "image/png") }); var data = { title: title, text: text, files: [file] }; if(navigator.canShare && !navigator.canShare(data)){ await navigator.share({ title: title, text: text }); return true; } await navigator.share(data); return true; }catch(e){ if(e && e.name === "AbortError") return true; } }
-    if(navigator.share){ try{ await navigator.share({ title: title, text: text, url: opts.url }); return true; }catch(e){ if(e && e.name === "AbortError") return true; } }
+    if(navigator.share && blob && filename){
+      try{
+        var file = new File([blob], filename, { type: blob.type || (/\.pdf$/i.test(filename) ? "application/pdf" : "image/png") });
+        var data = { title: title, text: text, files: [file] };
+        if(navigator.canShare && !navigator.canShare(data)){ await navigator.share({ title: title, text: text }); return true; }
+        await navigator.share(data);
+        return true;
+      }catch(e){ if(e && e.name === "AbortError") return true; }
+    }
+    if(navigator.share){
+      try{ await navigator.share({ title: title, text: text, url: opts.url }); return true; }
+      catch(e){ if(e && e.name === "AbortError") return true; }
+    }
+    window.__orbitShareBusy = false;
     return false;
   };
   window.__orbitHaptic = async function(style){ try{ if(!hasCap()){ if(navigator.vibrate) navigator.vibrate(style === "error" ? 30 : 12); return; } var H = plugin("Haptics"); if(!H) return; if(style === "success" && H.notification) await H.notification({ type: "SUCCESS" }); else if(style === "error" && H.notification) await H.notification({ type: "ERROR" }); else if(H.impact) await H.impact({ style: "LIGHT" }); }catch(e){} };

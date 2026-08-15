@@ -1849,11 +1849,22 @@ function blobToBase64(blob){
 
 /** Save file so it can appear in Downloads / Gallery / share targets */
 async function saveBlobToDevice(blob, filename, meta){
-  const item = registerOrbitDownload(blob, filename, meta || {});
-  const mime = (blob && blob.type) || (meta && meta.mime) || "application/octet-stream";
+  meta = meta || {};
+  const item = registerOrbitDownload(blob, filename, meta);
+  const mime = (blob && blob.type) || meta.mime || "application/octet-stream";
   const isImage = /^image\//i.test(mime) || /\.png$/i.test(filename) || /\.jpe?g$/i.test(filename);
-  const title = (meta && meta.title) || filename;
-  const text = (meta && meta.text) || "File from TechSerenia";
+  const title = meta.title || filename;
+  // Prefer a real text invoice when available (never generic "File from TechSerenia")
+  let text = meta.text;
+  if (!text && typeof window.buildInvoiceShareText === "function") {
+    try { text = window.buildInvoiceShareText(meta, lastInvoicePayload); } catch(e) {}
+  }
+  if (!text) {
+    const inv = meta.invoiceNumber ? ("Invoice #" + meta.invoiceNumber) : "Invoice";
+    const tot = (meta.total != null && isFinite(Number(meta.total))) ? ("\nTotal: ₹" + Number(meta.total).toFixed(2)) : "";
+    text = inv + tot + "\n— OrbitBills · TechSerenia";
+  }
+  const silent = !!meta.silent;
 
   // 1) Capacitor: write to external Pictures (gallery-friendly) + Documents, then Share with files[]
   try{
@@ -1886,14 +1897,19 @@ async function saveBlobToDevice(blob, filename, meta){
           }catch(eDir){}
         }
       }
+      // Silent mode: only save file, do NOT open system share (prevents double share sheet)
+      if(silent){
+        if(uri){ try{ toast("Saved on device"); }catch(e){} }
+        return item;
+      }
       if(Share && Share.share && uri){
         try{
-          await Share.share({ title: title, text: text, files: [uri], url: uri, dialogTitle: "Save or share" });
+          await Share.share({ title: title, text: text, files: [uri], url: uri, dialogTitle: "Share invoice" });
           try{ toast("Choose Gallery, WhatsApp, or Files"); }catch(e){}
           return item;
         }catch(eShare){
           try{
-            await Share.share({ title: title, text: text, url: uri, dialogTitle: "Save or share" });
+            await Share.share({ title: title, text: text, url: uri, dialogTitle: "Share invoice" });
             try{ toast("Choose Gallery, WhatsApp, or Files"); }catch(e){}
             return item;
           }catch(e2){ console.warn("Cap Share", e2); }
@@ -1910,7 +1926,11 @@ async function saveBlobToDevice(blob, filename, meta){
     }
   }catch(eCap){ console.warn("Capacitor save", eCap); }
 
-  // 2) Unified helper / Web Share with file
+  // 2) Unified helper / Web Share with file (skip when silent)
+  if(silent){
+    try{ toast("Saved on device"); }catch(e){}
+    return item;
+  }
   try{
     if(window.__orbitNativeShare){
       const ok = await window.__orbitNativeShare({ blob: blob, filename: filename, title: title, text: text });
@@ -2052,6 +2072,47 @@ function printLast(){
 }
 function esc(s){ if(s==null)return""; return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
 function money(n){ return currency+Number(n||0).toFixed(2); }
+
+/** Full text invoice for WhatsApp / system share (no generic "File from TechSerenia") */
+window.buildInvoiceShareText = function(meta, inv){
+  try{
+    inv = inv || (typeof lastInvoicePayload !== "undefined" ? lastInvoicePayload : null) || {};
+    meta = meta || {};
+    const invNo = inv.invoiceNumber || meta.invoiceNumber || "Invoice";
+    const client = inv.clientName || "Walk-in customer";
+    const lines = [];
+    lines.push("*" + invNo + "*");
+    lines.push("Client: " + client);
+    lines.push("Status: " + (inv.status || "paid"));
+    lines.push("");
+    const items = inv.items || [];
+    if(items.length){
+      lines.push("*Items*");
+      items.forEach(function(it){
+        const qty = Number(it.qty)||0;
+        const price = Number(it.price)||0;
+        const amt = (qty * price).toFixed(2);
+        lines.push("• " + (it.name||"Item") + " × " + qty + " @ ₹" + price.toFixed(2) + " = ₹" + amt);
+      });
+      lines.push("");
+    }
+    if(inv.subtotal != null) lines.push("Subtotal: ₹" + Number(inv.subtotal).toFixed(2));
+    if(Number(inv.discount||0) > 0) lines.push("Discount: −₹" + Number(inv.discount).toFixed(2));
+    if(inv.taxAmount != null) lines.push("Tax: ₹" + Number(inv.taxAmount).toFixed(2));
+    if(Number(inv.creditApplied||0) > 0) lines.push("Credit: −₹" + Number(inv.creditApplied).toFixed(2));
+    const total = inv.total != null ? inv.total : meta.total;
+    if(total != null) lines.push("*Total: ₹" + Number(total).toFixed(2) + "*");
+    if(inv.notes) { lines.push(""); lines.push("Notes: " + inv.notes); }
+    lines.push("");
+    lines.push("Thank you · OrbitBills · TechSerenia");
+    return lines.join("\n");
+  }catch(e){
+    const invNo = (meta && meta.invoiceNumber) || "Invoice";
+    const tot = (meta && meta.total != null) ? ("\nTotal: ₹" + Number(meta.total).toFixed(2)) : "";
+    return invNo + tot + "\n— OrbitBills · TechSerenia";
+  }
+};
+
 function openModal(id){
   try{
     if(window.__orbitCloseMobileCart) window.__orbitCloseMobileCart();
@@ -2150,15 +2211,32 @@ async function prepareAndOpenInvoiceShare(fmt){
       }
     }catch(e){ console.warn("png prep", e); }
   }
-  if(blob && typeof downloadBlob === "function"){
+  if(blob){
     try{
-      await Promise.resolve(downloadBlob(blob, filename, {
-        kind: fmt === "pdf" ? "pdf" : "png",
-        mime: mime || "image/png",
-        invoiceNumber: lastInvoicePayload.invoiceNumber,
-        total: lastInvoicePayload.total
-      }));
-    }catch(e){}
+      // silent:true — only register/save file, do NOT open system share (user will choose from our modal once)
+      const shareText = (typeof window.buildInvoiceShareText === "function")
+        ? window.buildInvoiceShareText({ invoiceNumber: lastInvoicePayload.invoiceNumber, total: lastInvoicePayload.total }, lastInvoicePayload)
+        : undefined;
+      if(typeof saveBlobToDevice === "function"){
+        await saveBlobToDevice(blob, filename, {
+          kind: fmt === "pdf" ? "pdf" : "png",
+          mime: mime || "image/png",
+          invoiceNumber: lastInvoicePayload.invoiceNumber,
+          total: lastInvoicePayload.total,
+          silent: true,
+          text: shareText
+        });
+      } else if(typeof downloadBlob === "function"){
+        downloadBlob(blob, filename, {
+          kind: fmt === "pdf" ? "pdf" : "png",
+          mime: mime || "image/png",
+          invoiceNumber: lastInvoicePayload.invoiceNumber,
+          total: lastInvoicePayload.total,
+          silent: true,
+          text: shareText
+        });
+      }
+    }catch(e){ console.warn("prepare save", e); }
   }
   // Point share sheet at newest download
   try{
@@ -4739,9 +4817,18 @@ window.__calcOpen = false;
   }
     
   function invoiceShareText(it){
-    var inv = it.invoiceNumber ? ("Invoice #" + it.invoiceNumber) : "Invoice";
-    var tot = (it.total != null && isFinite(Number(it.total))) ? ("Total: ₹" + Number(it.total).toFixed(2)) : "";
-    return inv + (tot ? ("\n" + tot) : "") + "\n— OrbitBills";
+    // Prefer full text invoice from last sale / payload
+    if(typeof window.buildInvoiceShareText === "function"){
+      try{
+        return window.buildInvoiceShareText({
+          invoiceNumber: it && it.invoiceNumber,
+          total: it && it.total
+        }, (typeof lastInvoicePayload !== "undefined" ? lastInvoicePayload : null));
+      }catch(e){}
+    }
+    var inv = (it && it.invoiceNumber) ? ("Invoice #" + it.invoiceNumber) : "Invoice";
+    var tot = (it && it.total != null && isFinite(Number(it.total))) ? ("Total: ₹" + Number(it.total).toFixed(2)) : "";
+    return inv + (tot ? ("\n" + tot) : "") + "\n— OrbitBills · TechSerenia";
   }
 
   async function blobAsFile(it){
@@ -4767,6 +4854,13 @@ window.__calcOpen = false;
   }
 
   async function systemShareFile(it){
+    // Prevent double system share sheet (open → close → open again)
+    if(window.__orbitShareBusy){
+      console.warn("Share already in progress");
+      return true;
+    }
+    window.__orbitShareBusy = true;
+    setTimeout(function(){ window.__orbitShareBusy = false; }, 4000);
     var title = "Invoice " + (it.invoiceNumber || it.filename || "TechSerenia");
     var textMsg = (typeof invoiceShareText === "function") ? invoiceShareText(it) : ("Invoice from TechSerenia");
     var file = await blobAsFile(it);
