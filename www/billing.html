@@ -288,25 +288,31 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
   .low-banner{margin:0 0 4px!important;border-radius:0!important}
 
   /* Cart moves into bottom sheet on mobile — hide inline cart column content from flow
-     but keep in DOM for JS. Visual cart is the sheet. */
+     but keep in DOM for JS. Visual cart is the sheet.
+     Flex column + inner panel scroll so Sale actions (Create/Quote/Return/Shift) stay reachable. */
   .cart-side{
     position:fixed!important;
     left:0;right:0;
     bottom:0;
     z-index:120!important;
-    max-height:min(90vh, 760px)!important;
-    overflow:auto!important;
+    /* Use dvh so Android system nav / Capacitor insets don't clip the sheet */
+    max-height:min(92dvh, 92vh, 780px)!important;
+    height:auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important; /* outer does not scroll — panels do */
     -webkit-overflow-scrolling:touch;
     border-radius:18px 18px 0 0!important;
     box-shadow:0 -8px 32px rgba(15,23,42,.18)!important;
     border-top:1px solid var(--line);
-    padding:12px 14px calc(16px + env(safe-area-inset-bottom,0px))!important;
+    padding:10px 14px 0!important;
     transform:translateY(110%);
     transition:transform .22s ease;
     background:var(--card)!important;
     width:100%;
     pointer-events:none;
     visibility:hidden;
+    box-sizing:border-box!important;
   }
   body.m-cart-open .cart-side{
     transform:translateY(0)!important;
@@ -316,10 +322,47 @@ th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04
   body.m-cart-open .m-cart-backdrop{display:block!important;z-index:110!important}
   .cart-toggle{display:none!important}
   .cart-side > h3{
-    position:sticky;top:0;background:var(--card);padding:4px 0 10px;
+    flex:0 0 auto;
+    position:relative;top:0;background:var(--card);padding:4px 0 10px;
     display:flex;align-items:center;justify-content:space-between;z-index:2
   }
   .cart-side > h3::after{content:none}
+  /* Tabs stick at top of sheet; panels scroll underneath */
+  .cart-side .cart-top-tabs{
+    flex:0 0 auto!important;
+    position:relative!important;
+    top:auto!important;
+    margin-bottom:8px!important;
+    z-index:4;
+  }
+  .cart-side .cart-panel{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain;
+    /* Extra space so Create / Quote / Return / Shift clear nav bar + thumbs */
+    padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px) + 24px)!important;
+    touch-action:pan-y!important;
+  }
+  .cart-side .cart-panel .toolbar,
+  .cart-side .cart-panel .row-2,
+  .cart-side .cart-panel .btn{
+    position:relative;
+    z-index:1;
+    pointer-events:auto!important;
+  }
+  .cart-side #createInvoiceBtn,
+  .cart-side #btnQuote,
+  .cart-side #btnSplit,
+  .cart-side #btnHold2,
+  .cart-side #btnReturn,
+  .cart-side #btnShift{
+    min-height:44px!important;
+    min-width:64px;
+    pointer-events:auto!important;
+  }
   .m-cart-close{
     display:inline-flex!important;align-items:center;justify-content:center;
     width:36px;height:36px;border-radius:9px;border:1px solid var(--line);
@@ -1342,10 +1385,12 @@ input,select,textarea{
       <button type="button" class="btn btn-primary btn-block" id="scanManualGo" style="margin-top:8px;min-height:48px">Find product</button>
     </div>
     <div id="scanCameraBox" style="display:none;margin-bottom:10px">
-      <div style="position:relative;border-radius:12px;overflow:hidden;background:#0f172a;aspect-ratio:4/3">
-        <video id="scanVideo" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;display:block"></video>
-        <div style="position:absolute;inset:18% 12%;border:2px solid rgba(255,255,255,.85);border-radius:12px;pointer-events:none"></div>
+      <div id="scanVideoWrap" style="position:relative;border-radius:12px;overflow:hidden;background:#0f172a;aspect-ratio:4/3">
+        <video id="scanVideo" playsinline webkit-playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;display:block"></video>
+        <div id="scanFrameGuide" style="position:absolute;inset:18% 12%;border:2px solid rgba(255,255,255,.85);border-radius:12px;pointer-events:none"></div>
       </div>
+      <!-- html5-qrcode mounts here when BarcodeDetector is unavailable (common in Capacitor WebView) -->
+      <div id="scanHtml5Region" style="display:none;width:100%;min-height:240px;border-radius:12px;overflow:hidden;background:#0f172a"></div>
       <p id="scanCameraStatus" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center">Point camera at barcode</p>
       <button type="button" class="btn btn-ghost btn-block" id="scanCameraStop" style="margin-top:8px;min-height:44px">Stop camera</button>
     </div>
@@ -2491,7 +2536,12 @@ document.getElementById("scanField").addEventListener("keydown",e=>{
   processScanCode(code);
 });
 (function initScanModal(){
-  var stream=null, raf=0, detector=null, lastCode="", lastAt=0;
+  var stream=null, raf=0, detector=null, lastCode="", lastAt=0, html5Scanner=null, html5Loading=null;
+  function isCapacitorNative(){
+    try{
+      return !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : (window.Capacitor.getPlatform && window.Capacitor.getPlatform()!=="web")));
+    }catch(e){ return false; }
+  }
   function openModal(){
     var m=document.getElementById("scanModal");
     if(!m) return;
@@ -2508,12 +2558,24 @@ document.getElementById("scanField").addEventListener("keydown",e=>{
   }
   function stopCamera(){
     if(raf){ cancelAnimationFrame(raf); raf=0; }
+    if(html5Scanner){
+      try{
+        var sc=html5Scanner;
+        html5Scanner=null;
+        if(sc && sc.isScanning && sc.isScanning()) sc.stop().catch(function(){});
+        else if(sc && sc.clear) sc.clear();
+      }catch(e){}
+    }
     if(stream){
       try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
       stream=null;
     }
     var v=document.getElementById("scanVideo");
     if(v){ try{ v.srcObject=null; }catch(e){} }
+    var region=document.getElementById("scanHtml5Region");
+    if(region){ region.style.display="none"; region.innerHTML=""; }
+    var wrap=document.getElementById("scanVideoWrap");
+    if(wrap) wrap.style.display="";
   }
   function onCode(code){
     code=String(code||"").trim();
@@ -2526,51 +2588,161 @@ document.getElementById("scanField").addEventListener("keydown",e=>{
     if(typeof processScanCode==="function") processScanCode(code);
     else if(typeof toast==="function") toast("Scanned: "+code);
   }
+  function loadHtml5Qrcode(){
+    if(window.Html5Qrcode) return Promise.resolve(window.Html5Qrcode);
+    if(html5Loading) return html5Loading;
+    html5Loading=new Promise(function(resolve,reject){
+      var s=document.createElement("script");
+      s.src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+      s.async=true;
+      s.onload=function(){ resolve(window.Html5Qrcode); };
+      s.onerror=function(){ html5Loading=null; reject(new Error("Could not load barcode scanner library")); };
+      document.head.appendChild(s);
+    });
+    return html5Loading;
+  }
+  async function getCameraStream(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      // Older Android WebView polyfill path
+      var legacy=navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      if(!legacy) throw new Error("Camera API not available. Grant CAMERA permission and rebuild the APK.");
+      return new Promise(function(resolve,reject){
+        legacy.call(navigator,{ audio:false, video:true }, resolve, reject);
+      });
+    }
+    // Progressive constraints — Capacitor/Android WebView often rejects high ideal sizes
+    var attempts=[
+      { audio:false, video:{ facingMode:{ exact:"environment" } } },
+      { audio:false, video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1280 }, height:{ ideal:720 } } },
+      { audio:false, video:{ facingMode:"environment" } },
+      { audio:false, video:{ facingMode:"user" } },
+      { audio:false, video:true }
+    ];
+    var lastErr=null;
+    for(var i=0;i<attempts.length;i++){
+      try{
+        return await navigator.mediaDevices.getUserMedia(attempts[i]);
+      }catch(err){ lastErr=err; }
+    }
+    throw lastErr || new Error("Camera permission denied or unavailable");
+  }
+  async function startBarcodeDetectorLoop(v, status){
+    try{
+      detector=new BarcodeDetector({ formats:["ean_13","ean_8","code_128","code_39","qr_code","upc_a","upc_e"] });
+    }catch(e){
+      try{ detector=new BarcodeDetector(); }catch(e2){ detector=null; }
+    }
+    if(!detector) return false;
+    if(status) status.textContent="Point camera at barcode";
+    var tick=async function(){
+      if(!stream) return;
+      try{
+        if(v.readyState>=2){
+          var codes=await detector.detect(v);
+          if(codes && codes.length){
+            var c0=codes[0];
+            var raw=(c0.rawValue!=null && c0.rawValue!=="") ? c0.rawValue : (c0.data||"");
+            if(raw){ onCode(String(raw)); return; }
+          }
+        }
+      }catch(e){}
+      raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick);
+    return true;
+  }
+  async function startHtml5Fallback(status, msg){
+    var region=document.getElementById("scanHtml5Region");
+    var wrap=document.getElementById("scanVideoWrap");
+    if(!region) throw new Error("Scanner UI missing");
+    if(status) status.textContent="Loading scanner…";
+    var Html5Qrcode=await loadHtml5Qrcode();
+    if(!Html5Qrcode) throw new Error("Scanner library unavailable");
+    // Prefer html5-qrcode's own camera control on Capacitor (more reliable than raw stream + detector)
+    if(wrap) wrap.style.display="none";
+    region.style.display="block";
+    region.innerHTML="";
+    html5Scanner=new Html5Qrcode("scanHtml5Region");
+    var cameras=[];
+    try{ cameras=await Html5Qrcode.getCameras(); }catch(e){ cameras=[]; }
+    var cameraId=null;
+    if(cameras && cameras.length){
+      // Prefer back camera by label
+      var back=cameras.find(function(c){ return /back|rear|environment/i.test(c.label||""); });
+      cameraId=(back||cameras[cameras.length-1]).id;
+    }
+    var config={ fps:10, qrbox:function(w,h){ var s=Math.floor(Math.min(w,h)*0.7); return { width:s, height:s }; }, aspectRatio:1.333 };
+    var onSuccess=function(decoded){ onCode(decoded); };
+    if(cameraId){
+      await html5Scanner.start(cameraId, config, onSuccess, function(){});
+    }else{
+      await html5Scanner.start({ facingMode:"environment" }, config, onSuccess, function(){});
+    }
+    if(status) status.textContent="Point camera at barcode";
+    if(msg) msg.textContent="";
+  }
   async function startCamera(){
     var box=document.getElementById("scanCameraBox");
     var status=document.getElementById("scanCameraStatus");
     var msg=document.getElementById("scanModalMsg");
+    var wrap=document.getElementById("scanVideoWrap");
+    var region=document.getElementById("scanHtml5Region");
     document.getElementById("scanManualBox").style.display="none";
     box.style.display="block";
+    if(wrap) wrap.style.display="";
+    if(region){ region.style.display="none"; region.innerHTML=""; }
     if(status) status.textContent="Starting camera…";
+    if(msg) msg.textContent="";
     stopCamera();
     try{
-      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-        throw new Error("Camera not available in this browser");
-      }
-      stream=await navigator.mediaDevices.getUserMedia({
-        audio:false,
-        video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1280 }, height:{ ideal:720 } }
-      });
-      var v=document.getElementById("scanVideo");
-      v.srcObject=stream;
-      await v.play();
-      if(status) status.textContent="Point camera at barcode";
-      if("BarcodeDetector" in window){
+      // On Capacitor/Android, BarcodeDetector is usually missing — use html5-qrcode first
+      var preferHtml5=isCapacitorNative() || !("BarcodeDetector" in window);
+      if(preferHtml5){
         try{
-          detector=new BarcodeDetector({ formats:["ean_13","ean_8","code_128","code_39","qr_code","upc_a","upc_e"] });
-        }catch(e){ detector=new BarcodeDetector(); }
-        var tick=async function(){
-          if(!stream) return;
+          await startHtml5Fallback(status, msg);
+          return;
+        }catch(html5Err){
+          // Fall through to getUserMedia + optional detector
+          if(msg) msg.textContent=String(html5Err && html5Err.message ? html5Err.message : html5Err);
+        }
+      }
+      stream=await getCameraStream();
+      var v=document.getElementById("scanVideo");
+      if(!v) throw new Error("Video element missing");
+      v.setAttribute("playsinline","true");
+      v.setAttribute("webkit-playsinline","true");
+      v.muted=true;
+      v.srcObject=stream;
+      try{ await v.play(); }catch(playErr){ /* some WebViews need a second tick */ setTimeout(function(){ try{ v.play(); }catch(e){} }, 100); }
+      if("BarcodeDetector" in window){
+        var ok=await startBarcodeDetectorLoop(v, status);
+        if(!ok){
+          // Stream works but no detector — try html5 on same device
           try{
-            if(v.readyState>=2){
-              var codes=await detector.detect(v);
-              if(codes && codes.length){
-                var raw=codes[0].rawValue || codes[0].rawValue===0 ? codes[0].rawValue : (codes[0].data||"");
-                if(raw){ onCode(String(raw)); return; }
-              }
-            }
-          }catch(e){}
-          raf=requestAnimationFrame(tick);
-        };
-        raf=requestAnimationFrame(tick);
+            stopCamera();
+            await startHtml5Fallback(status, msg);
+            return;
+          }catch(e){
+            if(status) status.textContent="Camera on — use Enter code if scan fails";
+            if(msg) msg.textContent="Live barcode decode limited on this device. Use Enter code.";
+          }
+        }
       } else {
-        if(status) status.textContent="Live scan needs Chrome/Edge. Use Enter code, or type barcode in Search.";
-        if(msg) msg.textContent="BarcodeDetector not supported — use Enter code";
+        try{
+          stopCamera();
+          await startHtml5Fallback(status, msg);
+        }catch(e){
+          if(status) status.textContent="Camera on — decoding unavailable";
+          if(msg) msg.textContent="Use Enter code, or type barcode in Search.";
+          if(typeof toast==="function") toast("Barcode decode unavailable — use Enter code");
+        }
       }
     }catch(err){
+      var errText=String(err && err.message ? err.message : err);
       if(status) status.textContent="Camera permission denied or unavailable";
-      if(msg) msg.textContent=String(err && err.message ? err.message : err);
+      if(msg){
+        msg.textContent=errText + (isCapacitorNative() ? " — ensure CAMERA permission is in AndroidManifest and allow access when prompted." : "");
+      }
       if(typeof toast==="function") toast("Camera unavailable — use Enter code");
     }
   }
