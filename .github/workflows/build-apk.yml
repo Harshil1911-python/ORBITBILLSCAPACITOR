@@ -22,8 +22,50 @@ jobs:
         run: |
           npm install
 
-      # Always start from a clean complete Capacitor Android platform.
-      # Partial android/ (Manifest + MainActivity only) breaks Gradle / cap sync.
+      - name: Bundle html5-qrcode for offline camera scan
+        run: |
+          set -e
+          if [ ! -f www/html5-qrcode.min.js ]; then
+            echo "Downloading html5-qrcode into www/ (offline camera scan)"
+            curl -fsSL "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" -o www/html5-qrcode.min.js
+          fi
+          wc -c www/html5-qrcode.min.js
+          python3 << 'PY'
+from pathlib import Path
+import re
+p = Path("www/billing.html")
+t = p.read_text(encoding="utf-8")
+if 'inject("html5-qrcode.min.js")' in t:
+    print("billing.html already prefers local html5-qrcode")
+elif 'unpkg.com/html5-qrcode' in t:
+    pattern = r"function loadHtml5Qrcode\(\)\{[\s\S]*?return html5Loading;\s*\}"
+    new_fn = '''function loadHtml5Qrcode(){
+    if(window.Html5Qrcode) return Promise.resolve(window.Html5Qrcode);
+    if(html5Loading) return html5Loading;
+    function inject(src){
+      return new Promise(function(resolve,reject){
+        var s=document.createElement("script");
+        s.src=src; s.async=true;
+        var done=false;
+        var timer=setTimeout(function(){ if(done)return; done=true; try{s.remove();}catch(e){} reject(new Error("Scanner script timeout")); }, 12000);
+        s.onload=function(){ if(done)return; done=true; clearTimeout(timer); if(window.Html5Qrcode) resolve(window.Html5Qrcode); else reject(new Error("Html5Qrcode missing")); };
+        s.onerror=function(){ if(done)return; done=true; clearTimeout(timer); reject(new Error("Could not load "+src)); };
+        document.head.appendChild(s);
+      });
+    }
+    html5Loading=inject("html5-qrcode.min.js").catch(function(){ return inject("https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"); }).catch(function(err){ html5Loading=null; throw err; });
+    return html5Loading;
+  }'''
+    t2, n = re.subn(pattern, new_fn, t, count=1)
+    if n:
+        p.write_text(t2, encoding="utf-8")
+        print("Patched billing.html loadHtml5Qrcode to local-first")
+    else:
+        print("WARN: loadHtml5Qrcode pattern not found")
+else:
+    print("No CDN html5-qrcode reference found")
+PY
+
       - name: Ensure complete Android platform
         run: |
           set -e
