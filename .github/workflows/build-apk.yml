@@ -21,35 +21,49 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          python3 -m pip install pillow -q
 
-      - name: Ensure Android platform + sync
+      # Partial android/ (only Manifest + MainActivity, no Gradle) breaks `cap sync`.
+      # Always ensure a complete Capacitor Android platform before sync/build.
+      - name: Ensure complete Android platform
         run: |
+          set -e
+          NEED_RECREATE=0
           if [ ! -d android ]; then
-            echo "android/ missing — adding platform"
-            npx cap add android
+            echo "android/ missing"
+            NEED_RECREATE=1
+          elif [ ! -f android/gradlew ]; then
+            echo "android/gradlew missing — incomplete platform"
+            NEED_RECREATE=1
+          elif [ ! -f android/settings.gradle ] && [ ! -f android/settings.gradle.kts ]; then
+            echo "android settings.gradle missing — incomplete platform"
+            NEED_RECREATE=1
           fi
-          npx cap sync android
-          ls -la android
-          ls -la android/gradlew || true
 
-      - name: Ensure gradlew exists
-        run: |
-          if [ ! -f android/gradlew ]; then
-            echo "gradlew missing — recreating android platform"
+          if [ "$NEED_RECREATE" = "1" ]; then
+            echo "Recreating full Capacitor Android platform..."
             rm -rf android
             npx cap add android
-            npx cap sync android
           fi
+
+          npx cap sync android
+          test -f android/gradlew
           chmod +x android/gradlew
           ls -la android/gradlew
 
-      # Branding step removed for now (scripts/install-branding.py is missing)
+      - name: Patch CAMERA permission + MainActivity
+        run: |
+          set -e
+          chmod +x scripts/patch-camera-android.sh
+          bash scripts/patch-camera-android.sh
 
       - name: Build debug APK
-        run: cd android && ./gradlew assembleDebug
+        run: |
+          set -e
+          cd android
+          ./gradlew assembleDebug --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
           name: orbitbills-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
