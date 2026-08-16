@@ -88,12 +88,19 @@ pkg = pm.group(1) if pm else "com.techserenia.orbitbills"
 
 new = f"""package {pkg};
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {{
+    private static final int CAMERA_PERMISSION_REQUEST_CODE = 9001;
+    private PermissionRequest pendingWebPermissionRequest;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {{
         super.onCreate(savedInstanceState);
@@ -103,16 +110,48 @@ public class MainActivity extends BridgeActivity {{
                     @Override
                     public void onPermissionRequest(final PermissionRequest request) {{
                         runOnUiThread(() -> {{
-                            try {{
-                                if (request != null && request.getResources() != null) {{
-                                    request.grant(request.getResources());
-                                }}
-                            }} catch (Exception ignored) {{}}
+                            if (request == null || request.getResources() == null) return;
+                            boolean needsCamera = false;
+                            for (String r : request.getResources()) {{
+                                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) needsCamera = true;
+                            }}
+                            boolean alreadyGranted = ContextCompat.checkSelfPermission(
+                                MainActivity.this, Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED;
+                            if (needsCamera && !alreadyGranted) {{
+                                // WebView.grant() alone does NOT trigger the Android runtime
+                                // permission dialog on API 23+. We must request it ourselves
+                                // and only grant the WebView request once Android approves it.
+                                pendingWebPermissionRequest = request;
+                                ActivityCompat.requestPermissions(
+                                    MainActivity.this,
+                                    new String[]{{ Manifest.permission.CAMERA }},
+                                    CAMERA_PERMISSION_REQUEST_CODE
+                                );
+                                return;
+                            }}
+                            try {{ request.grant(request.getResources()); }} catch (Exception ignored) {{}}
                         }});
                     }}
                 }});
             }}
         }} catch (Exception ignored) {{}}
+    }}
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {{
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == CAMERA_PERMISSION_REQUEST_CODE && pendingWebPermissionRequest != null) {{
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            try {{
+                if (granted) {{
+                    pendingWebPermissionRequest.grant(pendingWebPermissionRequest.getResources());
+                }} else {{
+                    pendingWebPermissionRequest.deny();
+                }}
+            }} catch (Exception ignored) {{}}
+            pendingWebPermissionRequest = null;
+        }}
     }}
 }}
 """
