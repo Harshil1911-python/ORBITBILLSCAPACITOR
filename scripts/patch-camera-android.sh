@@ -10,10 +10,14 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 echo "Patching $MANIFEST for CAMERA + ML Kit..."
+echo "--- manifest head ---"
+head -n 8 "$MANIFEST" || true
+echo "---"
 
-python3 - <<'PY'
+python3 << 'PY'
 from pathlib import Path
 import re
+
 p = Path("android/app/src/main/AndroidManifest.xml")
 text = p.read_text(encoding="utf-8")
 
@@ -24,19 +28,26 @@ if "android.permission.CAMERA" not in text:
     <uses-feature android:name=\"android.hardware.camera\" android:required=\"false\" />
     <uses-feature android:name=\"android.hardware.camera.autofocus\" android:required=\"false\" />
 """
-    m = re.search(r"(<manifest\\b[^>]*>)", text, re.I)
+    m = re.search(r"(<manifest[^>]*>)", text, re.I)
     if not m:
-        raise SystemExit("Could not find <manifest> in AndroidManifest.xml")
-    insert_at = m.end()
-    text = text[:insert_at] + "\n" + snippet + text[insert_at:]
-    print("CAMERA permission added.")
+        m2 = re.search(r"<\?xml[^>]*\?>", text, re.I)
+        if m2:
+            insert_at = m2.end()
+            text = text[:insert_at] + "\n" + snippet + text[insert_at:]
+            print("CAMERA permission added (fallback after xml decl).")
+        else:
+            raise SystemExit("Could not find <manifest> in AndroidManifest.xml")
+    else:
+        insert_at = m.end()
+        text = text[:insert_at] + "\n" + snippet + text[insert_at:]
+        print("CAMERA permission added.")
 else:
     print("CAMERA permission already present.")
 
 # 2) ML Kit barcode dependency meta-data inside <application>
 mlkit_meta = '<meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui"/>'
 if "com.google.mlkit.vision.DEPENDENCIES" not in text:
-    m = re.search(r"(<application\\b[^>]*>)", text, re.I)
+    m = re.search(r"(<application[^>]*>)", text, re.I)
     if m:
         insert_at = m.end()
         text = text[:insert_at] + "\n        " + mlkit_meta + text[insert_at:]
@@ -47,6 +58,7 @@ else:
     print("ML Kit meta-data already present.")
 
 p.write_text(text, encoding="utf-8")
+print("Manifest patch written.")
 PY
 
 MAIN=$(find android/app/src/main/java -name 'MainActivity.java' 2>/dev/null | head -1 || true)
@@ -57,9 +69,10 @@ fi
 
 echo "Patching $MAIN for WebView camera grant..."
 
-python3 - <<'PY'
+python3 << 'PY'
 from pathlib import Path
 import re
+
 paths = list(Path("android/app/src/main/java").rglob("MainActivity.java"))
 if not paths:
     raise SystemExit(0)
@@ -70,10 +83,10 @@ if "onPermissionRequest" in text and "PermissionRequest" in text:
     print("MainActivity already has onPermissionRequest — leave as-is.")
     raise SystemExit(0)
 
-pm = re.search(r"package\\s+([\\w.]+)\\s*;", text)
+pm = re.search(r"package\s+([\w.]+)\s*;", text)
 pkg = pm.group(1) if pm else "com.techserenia.orbitbills"
 
-new = f'''package {pkg};
+new = f"""package {pkg};
 
 import android.os.Bundle;
 import android.webkit.PermissionRequest;
@@ -102,7 +115,7 @@ public class MainActivity extends BridgeActivity {{
         }} catch (Exception ignored) {{}}
     }}
 }}
-'''
+"""
 p.write_text(new, encoding="utf-8")
 print(f"Wrote camera-capable MainActivity to {p}")
 PY
