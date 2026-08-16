@@ -1,0 +1,17 @@
+ORBITBILLS CAMERA FIX — HOW TO APPLY
+====================================
+
+1. Copy / merge:
+   android/app/src/main/AndroidManifest.xml  →  add CAMERA permission lines
+   android/app/src/main/java/.../MainActivity.java  →  camera WebChromeClient grant
+
+2. From your full OrbitBills Capacitor project root:
+
+   npx cap sync android
+   cd android && ./gradlew assembleDebug
+
+3. Uninstall old APK on phone, install new debug APK.
+
+4. Billing → Scan → Camera scan → Allow camera.
+
+Full details: APPLY_CAMERA_FIX.md
