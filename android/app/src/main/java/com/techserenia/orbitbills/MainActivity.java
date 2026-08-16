@@ -6,10 +6,8 @@ import android.webkit.WebChromeClient;
 import com.getcapacitor.BridgeActivity;
 
 /**
- * OrbitBills MainActivity — camera permission grant for barcode scan (getUserMedia).
- *
- * If your package name is different, change the package line above to match
- * android/app/src/main/java/... path and AndroidManifest activity name.
+ * OrbitBills MainActivity
+ * Grants WebView camera access for barcode scanning (getUserMedia in billing.html)
  */
 public class MainActivity extends BridgeActivity {
 
@@ -17,9 +15,6 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Grant WebView camera (and mic if requested) so billing.html getUserMedia works.
-        // Capacitor Bridge usually handles this when CAMERA is in the manifest; this
-        // forces the grant if the system dialog is skipped or blocked on some devices.
         try {
             if (bridge != null && bridge.getWebView() != null) {
                 bridge.getWebView().setWebChromeClient(new WebChromeClient() {
