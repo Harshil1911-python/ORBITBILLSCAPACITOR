@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Inject CAMERA permission + robust MainActivity (runtime permission + BridgeWebChromeClient)
+# Inject CAMERA permission + MainActivity runtime permission + WebView grant
 set -euo pipefail
 
 MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -9,7 +9,6 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 echo "Patching $MANIFEST for CAMERA..."
-echo "--- manifest head ---"
 head -n 8 "$MANIFEST" || true
 
 if ! grep -q 'android.permission.CAMERA' "$MANIFEST"; then
@@ -25,11 +24,9 @@ snippet = """
 """
 m = re.search(r"(<manifest[^>]*>)", text, re.I)
 if not m:
-    print("WARN: <manifest> tag not found; dumping first 300 chars:")
     print(repr(text[:300]))
     raise SystemExit("Could not find <manifest> in AndroidManifest.xml")
-insert_at = m.end()
-text = text[:insert_at] + "\n" + snippet + text[insert_at:]
+text = text[:m.end()] + "\n" + snippet + text[m.end():]
 p.write_text(text, encoding="utf-8")
 print("CAMERA permission added.")
 PY
@@ -39,24 +36,22 @@ fi
 
 MAIN=$(find android/app/src/main/java -name 'MainActivity.java' 2>/dev/null | head -1 || true)
 if [ -z "${MAIN}" ]; then
-  echo "WARNING: MainActivity.java not found — skip WebChromeClient patch."
+  echo "WARNING: MainActivity.java not found — skip Java patch."
   exit 0
 fi
 
-echo "Patching $MAIN for WebView camera grant + runtime permission..."
+echo "Patching $MAIN ..."
 
 python3 - <<'PY'
 from pathlib import Path
 import re
 paths = list(Path("android/app/src/main/java").rglob("MainActivity.java"))
 if not paths:
-    print("No MainActivity.java found")
     raise SystemExit(0)
 p = paths[0]
 text = p.read_text(encoding="utf-8")
-
-if "requestPermissions" in text and "onPermissionRequest" in text and "BridgeWebChromeClient" in text:
-    print("MainActivity already has full camera patch — leave as-is.")
+if "requestPermissions" in text and "onPermissionRequest" in text:
+    print("MainActivity already patched — leave as-is.")
     raise SystemExit(0)
 
 pm = re.search(r"package\s+([\w.]+)\s*;", text)
@@ -68,63 +63,47 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.PermissionRequest;
+import android.webkit.WebChromeClient;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.BridgeWebChromeClient;
 
-/**
- * OrbitBills MainActivity
- * - Requests Android runtime CAMERA permission
- * - Grants WebView getUserMedia (barcode scan) via BridgeWebChromeClient
- */
 public class MainActivity extends BridgeActivity {{
-    private static final int CAMERA_PERMISSION_REQUEST = 1001;
+    private static final int REQ_CAMERA = 1001;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {{
         super.onCreate(savedInstanceState);
-        ensureCameraPermission();
-        setupWebViewCameraGrant();
-    }}
-
-    private void ensureCameraPermission() {{
         try {{
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                     != PackageManager.PERMISSION_GRANTED) {{
-                ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{{ Manifest.permission.CAMERA }},
-                    CAMERA_PERMISSION_REQUEST
-                );
+                ActivityCompat.requestPermissions(this,
+                    new String[]{{Manifest.permission.CAMERA}}, REQ_CAMERA);
             }}
         }} catch (Exception ignored) {{}}
-    }}
 
-    private void setupWebViewCameraGrant() {{
         try {{
-            if (bridge == null || bridge.getWebView() == null) {{
-                getWindow().getDecorView().post(this::setupWebViewCameraGrant);
-                return;
-            }}
-            bridge.getWebView().setWebChromeClient(new BridgeWebChromeClient(bridge) {{
+            getWindow().getDecorView().post(new Runnable() {{
                 @Override
-                public void onPermissionRequest(final PermissionRequest request) {{
-                    runOnUiThread(() -> {{
-                        try {{
-                            if (request != null && request.getResources() != null) {{
-                                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)
-                                        != PackageManager.PERMISSION_GRANTED) {{
-                                    ActivityCompat.requestPermissions(
-                                        MainActivity.this,
-                                        new String[]{{ Manifest.permission.CAMERA }},
-                                        CAMERA_PERMISSION_REQUEST
-                                    );
-                                }}
-                                request.grant(request.getResources());
+                public void run() {{
+                    try {{
+                        if (bridge == null || bridge.getWebView() == null) return;
+                        bridge.getWebView().setWebChromeClient(new WebChromeClient() {{
+                            @Override
+                            public void onPermissionRequest(final PermissionRequest request) {{
+                                runOnUiThread(new Runnable() {{
+                                    @Override
+                                    public void run() {{
+                                        try {{
+                                            if (request != null && request.getResources() != null) {{
+                                                request.grant(request.getResources());
+                                            }}
+                                        }} catch (Exception ignored) {{}}
+                                    }}
+                                }});
                             }}
-                        }} catch (Exception ignored) {{}}
-                    }});
+                        }});
+                    }} catch (Exception ignored) {{}}
                 }}
             }});
         }} catch (Exception ignored) {{}}
@@ -132,7 +111,7 @@ public class MainActivity extends BridgeActivity {{
 }}
 '''
 p.write_text(new, encoding="utf-8")
-print(f"Wrote camera-capable MainActivity to {p}")
+print(f"Wrote MainActivity to {p}")
 PY
 
 echo "Camera patch done."
