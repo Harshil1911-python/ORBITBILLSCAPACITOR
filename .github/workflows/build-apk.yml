@@ -22,8 +22,8 @@ jobs:
         run: |
           npm install
 
-      # Partial android/ (only Manifest + MainActivity, no Gradle) breaks `cap sync`.
-      # Always ensure a complete Capacitor Android platform before sync/build.
+      # Always start from a clean complete Capacitor Android platform.
+      # Partial android/ (Manifest + MainActivity only) breaks Gradle / cap sync.
       - name: Ensure complete Android platform
         run: |
           set -e
@@ -37,18 +37,26 @@ jobs:
           elif [ ! -f android/settings.gradle ] && [ ! -f android/settings.gradle.kts ]; then
             echo "android settings.gradle missing — incomplete platform"
             NEED_RECREATE=1
+          elif [ ! -d android/app/src/main ]; then
+            echo "android/app/src/main missing — incomplete platform"
+            NEED_RECREATE=1
           fi
 
           if [ "$NEED_RECREATE" = "1" ]; then
             echo "Recreating full Capacitor Android platform..."
             rm -rf android
             npx cap add android
+          else
+            echo "android/ looks complete — keeping existing platform"
           fi
 
           npx cap sync android
           test -f android/gradlew
           chmod +x android/gradlew
+          echo "Platform ready:"
           ls -la android/gradlew
+          test -f android/app/src/main/AndroidManifest.xml
+          echo "Manifest exists"
 
       - name: Patch CAMERA permission + MainActivity
         run: |
